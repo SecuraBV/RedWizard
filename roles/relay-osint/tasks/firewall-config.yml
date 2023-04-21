@@ -1,0 +1,9 @@
+---
+- name: "Iptables: Allow all outbound traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: OUTPUT
+    out_interface: "{{ ansible_default_ipv4.interface }}"
+    jump: ACCEPT
+    protocol: tcp
+

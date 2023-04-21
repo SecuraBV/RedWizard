@@ -1,0 +1,57 @@
+---
+- name: "OpenVPN clients: Check if ovpn configuration exists in {{ ovpn_config_directory }}"
+  ansible.builtin.stat:
+    path: "{{ ovpn_config_directory }}/config.conf"
+  register: ovpn_config
+
+- name: "Missing OpenVPN configuration. Can't create client profiles. Exiting."
+  block:
+    - ansible.builtin.debug:
+        msg: "Missing OpenVPN configuration. Can't create client profiles. Exiting."
+
+    - meta: end_play
+  when: ovpn_config.stat.exists == False
+
+- name: "OpenVPN clients: Check to see if client profiles already exist in {{ ovpn_config_directory }}/clients/"
+  ansible.builtin.stat:
+    path: "{{ ovpn_config_directory }}/clients/{{ item }}.visz"
+  register: existing_client_profiles
+  with_items: "{{ client_profiles }}"
+  ignore_errors: True
+
+- name: "OpenVPN clients: Create ovpn client profile"
+  become: yes
+  ansible.builtin.expect:
+    command: "openvpn-generate client --path {{ ovpn_config_directory }}"
+    responses:
+      "Common Name": "{{ item.item }}"
+    echo: yes
+  with_items: "{{ existing_client_profiles.results }}"
+  when: item.stat.exists == False
+
+- name: "OpenVPN clients: Convert the client profiles from visc to ovpn"
+  become: yes
+  ansible.builtin.command: "python3 {{ ovpn_config_directory }}/python3-convert-visc-to-ovpn.py  {{ ovpn_config_directory }}/clients/{{ item.item }}.visz"
+  with_items: "{{ existing_client_profiles.results }}"
+  when: item.stat.exists == False
+
+- name: Create local OpenVPN client profiles directory
+  ansible.builtin.file:
+    path: "{{ export_path }}/client_profiles/{{ inventory_hostname }}/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: Map remote client profiles
+  ansible.builtin.find:
+    paths: "{{ ovpn_config_directory }}/clients/"
+    recurse: no
+    patterns: "*.ovpn"
+  register: ovpn_client_files
+
+- name: "Download the client profiles to {{ export_path }} directory"
+  ansible.builtin.fetch:
+    src: "{{ item.path }}"
+    dest: "{{ export_path }}/client_profiles/{{ inventory_hostname }}/"
+    flat: yes
+  with_items: "{{ ovpn_client_files.files }}"

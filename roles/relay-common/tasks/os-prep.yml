@@ -1,0 +1,88 @@
+#- name: Ensure localisation files for '{{ config_system_locale }}' are available
+#  locale_gen:
+#    name: "{{ config_system_locale }}"
+#    state: present
+#
+#- name: Ensure language files for '{{ config_system_language }}' are available
+#  locale_gen:
+#    name: "{{ config_system_language }}"
+#    state: present
+#
+#- name: Get current locale and language configuration
+#  command: localectl status
+#  register: locale_status
+#  changed_when: false
+#
+#- name: Parse 'LANG' from current locale and language configuration
+#  set_fact:
+#    locale_lang: "{{ locale_status.stdout | regex_search('LANG=([^\n]+)', '\\1') | first }}"
+#
+#- name: Parse 'LANGUAGE' from current locale and language configuration
+#  set_fact:
+#    locale_language: "{{ locale_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
+#
+#- name: Configure locale to '{{ config_system_locale }}' and language to '{{ config_system_language }}'
+#  become: yes
+#  command: localectl set-locale LANG={{ config_system_locale }} LANGUAGE={{ config_system_language }}
+#  changed_when: locale_lang != config_system_locale or locale_language != config_system_language
+
+- name: "Install packages for the basic function of the relay"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-click
+      - python3-pexpect
+      - python3-pip
+      - pwgen
+      - vim
+      - iptables
+      - iptables-persistent
+      - tcpdump
+      - netcat
+      - dnsutils
+      - ipset
+      - net-tools
+      - curl
+      - nano
+      - bridge-utils
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "Remove ufw so it can't interfere with our iptables setup"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - ufw
+    state: absent
+
+- name: "Autoremove unused packages"
+  become: yes
+  ansible.builtin.command:
+    cmd: apt -y autoremove
+  register: apt_result
+  changed_when: "'packages will be REMOVED' in apt_result.stdout"
+
+- name: "Purge residual kernel packages"
+  become: yes
+  ansible.builtin.shell:
+    cmd: apt remove -y --purge $(dpkg -l | grep "^rc\s*linux-image-" | awk '{print $2}' | tr '\n' ' ')
+  register: apt_result
+  changed_when: "'packages will be REMOVED' in apt_result.stdout"
+
+- name: "Set the hostname to {{ codename }}-{{ inventory_hostname }}"
+  become: yes
+  ansible.builtin.hostname:
+    name: "{{ codename }}-{{ inventory_hostname }}"
+
+- name: "Add {{ codename }}-{{ inventory_hostname }} to /etc/hosts"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    line: "127.0.0.1 localhost {{ codename }}-{{ inventory_hostname }}"
+    state: present

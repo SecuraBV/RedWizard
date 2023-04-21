@@ -1,0 +1,37 @@
+- name: "RELAY - COBALTSTRIKE: Copy script to dynamically update the target for dns connections"
+  become: yes
+  ansible.builtin.template:
+      src: "update-dns-forward.j2"
+      dest: "{{ toolkit_directory }}/update-dns-forward-to-{{ relay_to_client_profile }}.sh"
+      mode: "0744"
+
+- name: "RELAY - COBALTSTRIKE: Add cronjob entry for dynamically updating IP address"
+  become: yes
+  ansible.builtin.cron:
+    name: "Update Backend IP address"
+    user: root
+    minute: 0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57
+    hour: "*"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "{{ toolkit_directory }}/update-dns-forward-to-{{ relay_to_client_profile }}.sh"
+    cron_file: "update-dns-forward-to-{{ relay_to_client_profile }}"
+
+- name: "RELAY - COBALTSTRIKE: Create a DNS Template"
+  ansible.builtin.template:
+    src: dns-config.j2
+    dest: "{{ toolkit_directory }}/dns_config_cs_{{ inventory_hostname }}.txt"
+
+- name: "RELAY - COBALTSTRIKE: Create local DNS-Config directory"
+  ansible.builtin.file:
+    path: "{{ export_path }}/dns_configs/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: "RELAY - COBALTSTRIKE: Download the client profiles to {{ export_path }} directory"
+  ansible.builtin.fetch:
+    src: "{{ toolkit_directory }}/dns_config_cs_{{ inventory_hostname }}.txt"
+    dest: "{{ export_path }}/dns_configs/"
+    flat: yes

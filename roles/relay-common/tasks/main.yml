@@ -1,0 +1,21 @@
+---
+- name: "***** RELAY: Checking prerequisites *****"
+  include_tasks: prerequisites.yml
+
+- name: "***** RELAY: Checking prerequisites for relays*****"
+  include_tasks: prerequisites-relay.yml
+
+- name: "***** RELAY: Preparing the operating system *****"
+  include_tasks: os-prep.yml
+
+- name: "***** RELAY: OpenVPN setup *****"
+  include_tasks: ovpn-setup.yml
+
+- name: "***** RELAY: Harden the server *****"
+  include_tasks: relay-hardening.yml
+
+- name: "***** BACKEND: Set up toolkit *****"
+  include_tasks: toolkit.yml
+
+- name: "***** RELAY: Set up the help files *****"
+  include_tasks: help-prep.yml

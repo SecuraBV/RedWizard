@@ -1,0 +1,29 @@
+---
+- name: "Install NetworkManager"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - network-manager
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: "Create OpenVPN killswitch script"
+  become: yes
+  ansible.builtin.template:
+    src: startvpn.j2
+    dest: "{{ toolkit_directory }}/startvpn.sh"
+    mode: 0755
+
+- name: "Add cronjob for starting VPN script"
+  become: yes
+  ansible.builtin.cron:
+    name: "Force VPN Connection"
+    user: root
+    minute: "*"
+    hour: "*"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "{{ toolkit_directory }}/startvpn.sh {{ openvpn_client_profile_path }}{{ relay_host }}/{{ osint_ovpn_pattern }}"
+    cron_file: "forcevpn"

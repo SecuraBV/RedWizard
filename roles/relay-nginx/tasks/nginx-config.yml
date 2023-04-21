@@ -1,0 +1,83 @@
+- name: "RELAY - NGINX: Disable NGINX Default Virtual Host"
+  become: yes
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  changed_when: false # Done always, so no change notification
+
+- name: "RELAY - NGINX: Copy NGINX template file (Also saving a backup)"
+  become: yes
+  ansible.builtin.template:
+      src: "revproxy.j2"
+      dest: "/etc/nginx/sites-available/{{nginx_relay_config_name}}.conf"
+      force: no
+
+- name: "RELAY - NGINX: Add upstream proxy to nginx config"
+  become: yes
+  ansible.builtin.blockinfile:
+    path: "/etc/nginx/sites-available/{{nginx_relay_config_name}}.conf"
+    marker: "#### {mark} UPSTREAM FOR {{ relay_to_client_profile }} ####"
+    insertafter: "#ANSIBLE_MARKER_UPSTREAM"
+    block: |
+      upstream backend-{{ relay_to_client_profile }} {
+      zone   backend 64k;
+      # The backend address is supposed to be automatically updated with the
+      # update-rev-proxy-to-{{ relay_to_client_profile }}.sh script running in a cronjob
+      server 10.8.0.2:{{ backend_port }}; # {{ relay_to_client_profile }}
+      }
+
+- name: "RELAY - NGINX: Add forward proxy rules for secret strings"
+  become: yes
+  ansible.builtin.blockinfile:
+    path: "/etc/nginx/sites-available/{{nginx_relay_config_name}}.conf"
+    marker: "#### {mark} FORWARD FOR {{ relay_to_client_profile }} ####"
+    insertafter: "#ANSIBLE_MARKER_PROXY"
+    block: |
+      {% for secret in secret_strings %}
+      location /{{secret.string}} {
+      proxy_pass {{ secret.connection_method }}://backend-{{ relay_to_client_profile }}{{ secret.forward_path }};
+      }
+      {% endfor %}
+
+- name: "RELAY - NGINX: Copy script to dynamically update the target for reverse connections"
+  become: yes
+  ansible.builtin.template:
+      src: "update-rev-proxy-ip.j2"
+      dest: "{{ toolkit_directory }}/update-rev-proxy-to-{{ relay_to_client_profile }}.sh"
+      mode: "0744"
+
+- name: "RELAY - NGINX: Add cronjob entry for dynamically updating IP address"
+  become: yes
+  ansible.builtin.cron:
+    name: "Update Backend IP address"
+    user: root
+    minute: 0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57
+    hour: "*"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "{{ toolkit_directory }}/update-rev-proxy-to-{{ relay_to_client_profile }}.sh"
+    cron_file: "update-backend-ip-{{ relay_to_client_profile }}"
+
+- name: "RELAY - NGINX: Link NGINX Relayhost Reverse Proxy"
+  become: yes
+  ansible.builtin.file:
+    src:  /etc/nginx/sites-available/{{nginx_relay_config_name}}.conf
+    dest: /etc/nginx/sites-enabled/{{nginx_relay_config_name}}.conf
+    state: link
+
+- name: "RELAY - NGINX: Set Logrotate to keep logs for a year"
+  become: yes
+  ansible.builtin.copy:
+    src: "nginx.logrotate"
+    dest: "/etc/logrotate.d/nginx"
+    force: yes
+
+- name: "RELAY - NGINX: Make Sure NGINX Service Is Running"
+  become: yes
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+    enabled: yes
+  changed_when: false # Done always, so no change notification
+

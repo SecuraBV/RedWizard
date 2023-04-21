@@ -1,0 +1,6 @@
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+echo -e "${GREEN}- GoPhish Phishing Docker for {{ domain_name }}${NC}"
+echo '  - Email is sent via {{ relay_host }} on {{ relay_host_ip }}'
+echo '  - Use "ssh -L {{gophish_admin_port}}:localhost:{{gophish_admin_port}} {{ansible_host}}" to set up a tunnel'
+echo '  - Interact with this instance via your browser with http://localhost:{{gophish_admin_port}}'

@@ -1,0 +1,8 @@
+- name: "***** BACKEND WEB-CATCHER: Set up client profiles *****"
+  include_tasks: backend-ovpn-clients.yml
+
+- name: "***** BACKEND WEB-CATCHER: Set up WebCatcher *****"
+  include_tasks: catcher-setup.yml
+
+- name: "***** BACKEND WEB-CATCHER: Write Help information *****"
+  include_tasks: write-help.yml

@@ -1,0 +1,33 @@
+
+- name: "Manual Phish: Creating {{ manual_phish_docker_path }}{{ relay_host }}/ directory"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ manual_phish_docker_path }}{{ relay_host }}/"
+    state: directory
+    mode: 0755
+
+- name: "Manual Phish: Copy the Manual Phish docker container"
+  become: yes
+  ansible.builtin.copy:
+    src: files/manual-phish/
+    dest: "{{ manual_phish_docker_path }}{{ relay_host }}/"
+
+- name: "Manual Phish selecting OVPN config based on pattern {{ manual_phish_ovpn_pattern }}"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ openvpn_client_profile_path }}{{ relay_host }}/{{ manual_phish_ovpn_pattern }}"
+    dest: "{{ manual_phish_docker_path }}{{ relay_host }}/manual-phish.ovpn"
+    remote_src: yes
+
+- name: "Manual Phish setting environment variables"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: "{{ manual_phish_docker_path }}{{ relay_host }}/.env"
+    regexp: "^{{ item.key }}=.*$"
+    line: "{{ item.key }}={{ item.value }}"
+    backrefs: yes
+  with_dict: "{{ env_config }}"
+
+- name: "Manual Phish Starting Manual Phish"
+  become: yes
+  ansible.builtin.shell: "cd {{ manual_phish_docker_path }}{{ relay_host }}/; docker-compose up -d --build"

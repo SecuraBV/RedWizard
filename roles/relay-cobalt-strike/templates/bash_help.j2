@@ -1,0 +1,8 @@
+GREEN='\033[0;32m'
+CYAN='\033[0;96m'
+NC='\033[0m' # No Color
+echo -e "${GREEN}- DNS Forwarder for CobaltStrike for {{ domain_name }}${NC}"
+echo -e "  DNS Traffic forward to incoming vpn designated ${CYAN}'{{ relay_to_client_profile }}'${NC}"
+echo -e "${CYAN}  Make sure the following DNS Settings are configured for this domain:${NC}"
+echo -e "  - {{ dns_beacon_subdomain }}   5 min    A    {{ ansible_host }}"
+echo -e "  - {{ dns_beacon_subdomain }}   5 min    NS   {{ domain_name }}"

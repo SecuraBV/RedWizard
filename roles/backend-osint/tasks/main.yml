@@ -1,0 +1,16 @@
+---
+- name: "***** BACKEND OSINT: Set up client profiles *****"
+  include_tasks: backend-ovpn-clients.yml
+
+- name: "***** BACKEND OSINT: Install additional packages and RDP Access *****"
+  include_tasks: rdp-setup.yml
+
+- name: "***** BACKEND OSINT: Set up OSINT Tooling and VPN *****"
+  include_tasks: osint-setup.yml
+
+- name: "***** BACKEND OSINT: Set up OVPN Killswitch *****"
+  include_tasks: ovpn-killswitch.yml
+
+- name: "***** BACKEND OSINT: Write Help *****"
+  include_tasks: write-help.yml
+

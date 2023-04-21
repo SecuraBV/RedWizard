@@ -1,0 +1,13 @@
+'------------------------------------------------------'
+
+'This is the README for the CobaltStrike DNS Forwarder for {{ domain_name }}'
+
+This component relays DNS Traffic for CobaltStrike DNS C&C traffic
+DNS Traffic forward to incoming vpn designated '{{ relay_to_client_profile }}'
+Make sure the following DNS Settings are configured for this domain:
+  - {{ dns_beacon_subdomain }}   5 min    A    {{ ansible_host }}
+  - {{ dns_beacon_subdomain }}   5 min    NS   {{ domain_name }}
+
+May the shells be ever in your favour
+
+'------------------------------------------------------'

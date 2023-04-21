@@ -1,0 +1,15 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+manual_phish_docker_path: "{{ toolkit_directory }}/manual-phish/docker/"
+manual_phish_ovpn_pattern: "manual-phish@{{ relay_host_ip }}.ovpn"
+
+env_config:
+  SMTP_HOST: "{{ internal_vpn_ip_gateway }}"
+  REAL_NAME: "info"
+  USER_NAME: "info"
+  DOMAIN_NAME: "{{ domain_name }}"
+  VPN_CONFIG: "manual-phish.ovpn"
+  RELAY_HOST: "{{ relay_host_ip }}"
+  CODENAME: "{{ codename }}"
+
+help_marker: "manual_phish_{{ domain_name }}"

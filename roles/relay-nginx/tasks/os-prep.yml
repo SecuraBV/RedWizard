@@ -1,0 +1,7 @@
+- name: "RELAY - NGINX: Install NGINX and Certbot from apt"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+    state: present

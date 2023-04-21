@@ -1,0 +1,32 @@
+version: '3'
+services:
+  gophish:
+    privileged: true
+    hostname: ${DOMAIN_NAME}
+    build:
+      context: .
+      args:
+        - VPN=${VPN_CONFIG}
+        - GOPHISHDIR=${GOPHISHDIR}
+        - GOPHISHVERSION=${GOPHISHVERSION}
+        - CONTACT_EMAIL=${CONTACT_EMAIL}
+    container_name: gophish-${DOMAIN_NAME}
+    environment:
+      - VPN=${VPN_CONFIG}
+      - GOPHISHDIR=${GOPHISHDIR}
+      - GOPHISHVERSION=${GOPHISHVERSION}
+      - RELAY_HOST=${RELAY_HOST}
+      - CODENAME=${CODENAME}
+      - GOPHISH_INITIAL_ADMIN_PASSWORD=${GOPHISH_PW}
+      - GOPHISH_INITIAL_ADMIN_API_TOKEN=${GOPHISH_API_TOKEN}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROMS=${SMTP_FROMS}
+    volumes:
+      - './logs:/var/log'
+    ports:
+      - '${GOPHISHPORT}:3333'
+      - '${GOPHISHWEBPORT}:80'
+

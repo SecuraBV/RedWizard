@@ -1,0 +1,45 @@
+
+- name: "Web-Catcher: Creating {{ web_catcher_docker_path }}{{ relay_host }}/ directory"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ web_catcher_docker_path }}{{ relay_host }}/"
+    state: directory
+    mode: 0755
+
+- name: "Web-Catcher: Copy the Catcher docker container"
+  become: yes
+  ansible.builtin.copy:
+    src: files/web-catcher/
+    dest: "{{ web_catcher_docker_path }}{{ relay_host }}/"
+    force: yes
+
+- name: "Web-Catcher selecting OVPN config based on pattern {{ web_catcher_ovpn_pattern }}"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ openvpn_client_profile_path }}{{ relay_host }}/{{ web_catcher_ovpn_pattern }}"
+    dest: "{{ web_catcher_docker_path }}{{ relay_host }}/web-catcher.ovpn"
+    remote_src: yes
+
+- name: Add Codename
+  ansible.builtin.lineinfile:
+    dest: "{{ web_catcher_docker_path }}{{ relay_host }}/.env"
+    regexp: "^CODENAME=.*$"
+    line: "CODENAME={{ codename }}"
+    backrefs: yes
+  become: yes
+
+- name: "Setting Remote addresses"
+  ansible.builtin.lineinfile:
+    dest: "{{ web_catcher_docker_path }}{{ relay_host }}/.env"
+    regexp: "^RELAY_HOST=.*$"
+    line: "RELAY_HOST={{ relay_host_ip }}"
+    backrefs: yes
+  become: yes
+
+- name: "Web-Catcher Building image"
+  become: yes
+  ansible.builtin.shell: "cd {{ web_catcher_docker_path }}{{ relay_host }}/; docker-compose build"
+
+- name: "Web-Catcher Starting Docker"
+  become: yes
+  ansible.builtin.shell: "cd {{ web_catcher_docker_path }}{{ relay_host }}/; docker-compose up --detach"

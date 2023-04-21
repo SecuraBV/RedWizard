@@ -1,0 +1,59 @@
+===== Component: Backend - GoPhish for campaign {{ domain_name }} =====
+
+----- Running on server: {{ ansible_host }}
+
+----- Relay Mail Server: {{ relay_host }} ({{ relay_host_ip }})
+
+----- Exposed ports: {{ gophish_admin_port }}
+
+----- GoPhish for domain: {{ domain_name }}
+
+----- Preconfigured: Sending profiles
+
+----- Usage:
+
+Before usage it is recommended to use the following SSH-config:
+
+```
+Host <Your Designation for this C2-Server>
+	HostName {{ ansible_host }}
+	LocalForward {{ gophish_admin_port }} localhost:{{ gophish_admin_port }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+	
+Host <Your Designation for the relay server>
+	HostName {{ relay_host_ip }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+
+```
+
+Next, get the configured URLs that you can use for your landing page by logging in to the phishing-relay:
+
+```
+ssh <Your Designation for the relay server>
+
+```
+
+The welcome message will display the URL's that will be forwarded to the GoPhish instance.
+Save the URL to use as the URL for the GoPhish campaign. (When setting up the campaign in GoPhish)
+
+Next, connect to GoPhish:
+
+```
+ssh <Your Designation for this C2-Server>
+```
+
+
+
+Use your browser to navigate to:
+
+```
+http://localhost:13337
+```
+
+
+Log-in to gophish using the preconfigured password.
+Now you can configure your GoPhish campagin.

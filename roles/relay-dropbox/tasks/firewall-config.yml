@@ -1,0 +1,20 @@
+---
+- name: "RELAY - DROPBOX: Forward for incoming dropbox traffic to backend docker"
+  become: yes
+  ansible.builtin.iptables:
+    table: nat
+    chain: PREROUTING
+    in_interface: "{{ ansible_default_ipv4.interface }}"
+    protocol: udp
+    match: udp
+    destination_port: "{{ exposed_port }}"
+    jump: DNAT
+    to_destination: " {{ dropbox_docker_ip }}:1194"
+    comment: "Redirect Openvpn on {{ exposed_port }} to {{ dropbox_docker_ip }}:1194"
+    state: present
+  changed_when: false # Done always, so no change notification
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+

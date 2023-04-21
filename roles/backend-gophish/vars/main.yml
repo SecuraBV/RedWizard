@@ -1,0 +1,24 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+gophish_docker_path: "{{ toolkit_directory }}/gophish/docker/"
+gophish_ovpn_pattern: "gophish@{{ relay_host_ip }}.ovpn"
+
+gophish_config:
+  SMTP_USER: "{{ ansible_user }}"
+  SMTP_PASSWORD: "{{ ansible_become_pass }}"
+  SMTP_FROMS: "{{ from_addresses }}"
+  CONTACT_EMAIL: "info@{{ domain_name }}"
+  # SMTP_PORT: 25
+  DOMAIN_NAME: "{{ domain_name }}"
+  GOPHISHPORT: "{{ gophish_admin_port }}"
+  GOPHISH_PW: "{{ gophish_password }}"
+  SMTP_HOST: "{{ internal_vpn_ip_gateway }}"
+  # Directory to intall gophish (no trailing slash!!!)
+  #GOPHISHDIR:/opt/gophish
+
+  # Github release version (latest for latest)
+  #GOPHISHVERSION: latest
+  #CONTACT_EMAIL=
+  #GOPHISH_PW=gophish
+
+help_marker: "gophish_{{ domain_name }}"

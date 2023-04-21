@@ -1,0 +1,161 @@
+---
+- name: "Allow all inbound loopback traffic"
+  become: yes
+  ansible.builtin.iptables:
+    action: append
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow already established inbound connections"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound ICMP traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: ACCEPT
+    protocol: icmp
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound SSH traffic from Company IP space"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: "22"
+    jump: ACCEPT
+    protocol: tcp
+    source: "{{ item }}"
+    wait: 60
+  with_items: "{{ company_ip_space }}"
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound SSH traffic from C2 IP space"
+  become: true
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: 22
+    jump: ACCEPT
+    protocol: tcp
+    source: "{{ item }}"
+    wait: 60
+  with_items: "{{ company_c2_space }}"
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound OpenVPN traffic from C2 IP space"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: 1194
+    jump: ACCEPT
+    protocol: udp
+    source: "{{ item }}"
+    wait: 60
+  with_items: "{{ company_c2_space }}"
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow outbound HTTP/HTTPS traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: OUTPUT
+    out_interface: "{{ ansible_default_ipv4.interface }}"
+    destination_port: "{{ item }}"
+    jump: ACCEPT
+    protocol: tcp
+    wait: 60
+  loop:
+    - 80
+    - 443
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Drop all other inbound traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    policy: DROP
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Drop IPv6 traffic"
+  become: true
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: DROP
+    action: append
+    state: present
+    ip_version: ipv6
+    wait: 60
+  notify: saveip6tables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Use NAT to allow web browsing from connected machines"
+  become: yes
+  ansible.builtin.iptables:
+    chain: POSTROUTING
+    jump: MASQUERADE
+    table: nat
+    out_interface: "{{ ansible_default_ipv4.interface }}"
+    action: append
+    state: present
+    source: "{{ item }}"
+    wait: 60
+  with_items: "{{ internal_vpn_ip_space }}"
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Deploy SSH server configuration from template"
+  become: yes
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+  notify:
+    - restart sshd
+
+- name: "Disable IPv6 to prevent unexpected issues"
+  become: yes
+  ansible.builtin.sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+    ignoreerrors: yes
+  with_dict: "{{ sysctl_config }}"
+  # Note, the specific rules for this role are configured in vars/main.yml

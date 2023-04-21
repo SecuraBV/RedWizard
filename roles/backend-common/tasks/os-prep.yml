@@ -1,0 +1,89 @@
+- name: "Change Ubuntu mirror because of hash mismatches on ESXi"
+  become: yes
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: 'http://[^\s]*archive\.ubuntu\.com/ubuntu'
+    replace: 'http://archive.ubuntu.com/ubuntu'
+
+- name: "Change Ubuntu mirror because of hash mismatches on ESXi"
+  become: true
+  replace:
+    path: /etc/apt/sources.list
+    regexp: 'http://[^\s]*archive\.ubuntu\.com/ubuntu'
+    replace: 'http://archive.ubuntu.com/ubuntu'
+
+
+- name: "Install basic packages for backend server use"
+  become: yes
+  ansible.builtin.apt:
+    name:
+       - docker.io
+       - docker-compose
+       - python3
+       - pwgen
+       - vim
+       - openvpn
+       - iptables
+       - iptables-persistent
+       - apparmor-utils
+       - tcpdump
+       - python3-pexpect
+       - python3-click
+       - netcat
+       - dnsutils
+       - python3-pip
+       - ipset
+       - zip
+       - screen
+       - apparmor-utils
+       - net-tools
+       - curl
+       - nano
+       - bridge-utils
+       - asciinema
+    state: present
+    update_cache: yes
+    cache_valid_time: 0
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "Remove UFW so it can't interfere with our iptables rules"
+  become: yes
+  ansible.builtin.apt:
+    name:
+     - ufw
+    state: absent
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "Autoremove unused packages"
+  become: yes
+  ansible.builtin.command:
+    cmd: apt -y autoremove
+  register: apt_result
+  changed_when: "'packages will be REMOVED' in apt_result.stdout"
+
+- name: "Purge residual kernel packages"
+  become: yes
+  ansible.builtin.shell:
+    cmd: apt remove -y --purge $(dpkg -l | grep "^rc\s*linux-image-" | awk '{print $2}' | tr '\n' ' ')
+  register: apt_result
+  changed_when: "'packages will be REMOVED' in apt_result.stdout"
+
+- name: "Set the system's hostname to {{ codename }}-{{ inventory_hostname }}"
+  become: yes
+  ansible.builtin.hostname:
+    name: "{{ codename }}-{{ inventory_hostname }}"
+
+- name: "Add {{ codename }}-{{ inventory_hostname }} to /etc/hosts"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: '^127\.0\.0\.1[ \t]+localhost'
+    line: "127.0.0.1 localhost {{ codename }}-{{ inventory_hostname }}"
+    state: present
+

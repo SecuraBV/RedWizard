@@ -1,0 +1,40 @@
+---
+- name: "User management: Ensure group 'rtspec' exists"
+  become: true
+  ansible.builtin.group:
+    name: rtspec
+    state: present
+
+- name: "User management: Ensure group 'docker' exists"
+  become: true
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: "User management: Adding existing user '{{ ansible_user }}' to group rtspec"
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: rtspec
+    append: yes
+
+- name: "User management: Add predefined users to the system"
+  become: true
+  ansible.builtin.user:
+    name: "{{ item.value.username }}"
+    password: "{{ item.value.pwhash }}"
+    shell: /bin/bash
+    groups: sudo,docker,rtspec
+    append: yes
+    state: present
+    update_password: on_create
+  loop: "{{ lookup('dict', users, wantlist=True) }}"
+
+
+- name: "User management: Set authorized keys for users"
+  become: true
+  ansible.builtin.authorized_key:
+    user: "{{ item.value.username }}"
+    key: "{{ item.value.sshkey }}"
+    state: present
+  loop: "{{ lookup('dict', users, wantlist=True) }}"

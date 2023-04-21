@@ -1,0 +1,24 @@
+---
+- name: restart sshd
+  become: yes
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+
+- name: saveiptables
+  become: yes
+  ansible.builtin.shell:
+    cmd: iptables-save > /etc/iptables/rules.v4
+
+- name: saveip6tables
+  become: yes
+  ansible.builtin.shell:
+    cmd: ip6tables-save > /etc/iptables/rules.v6
+
+- name: Restart xrdp (Seems to behave badly on some systems. If this crashes, re-running usually fixes it)
+  ansible.builtin.service:
+    name: xrdp
+    state: restarted
+    daemon_reload: yes
+    sleep: 30
+  listen: "Restart RDP Service"

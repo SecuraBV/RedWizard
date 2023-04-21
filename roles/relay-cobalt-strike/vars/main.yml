@@ -1,0 +1,6 @@
+---
+# vars file for relay-nginx
+nginx_relay_config_name: revproxy
+
+help_marker: "relay_cobaltstrike_{{domain_name}}_{{relay_to_client_profile}}"
+

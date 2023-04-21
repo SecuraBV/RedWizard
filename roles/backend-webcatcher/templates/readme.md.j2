@@ -1,0 +1,46 @@
+===== Component: Backend - WebCatcher for relay {{ relay_host }} =====
+
+----- Running on server: {{ ansible_host }}
+
+----- Relay Mail Server: {{ relay_host }} ({{ relay_host_ip }})
+
+----- Preconfigured: Sending profiles
+
+----- Usage:
+
+The goal of the webcathcer is to catch arbitrary HTTPS requests that are sent to the specific URL's.
+
+Before usage it is recommended to use the following SSH-config:
+
+```
+Host <Your Designation for this C2-Server>
+	HostName {{ ansible_host }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+	
+Host <Your Designation for the relay server>
+	HostName {{ relay_host_ip }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+
+```
+
+Next, get the configured URL by logging in to the WebCatcher-relay:
+
+```
+ssh <Your Designation for the relay server>
+
+```
+
+The welcome message will display the URL's that will be forwarded to the C2 server.
+
+Visit the URL and check if the request was received by the webcatcher:
+
+```
+ssh <Your Designation for this C2-Server>
+cat /TOOLKIT/web-catcher/docker/Nginx-Webcatcher-Callback/logs/requests.log
+
+```
+

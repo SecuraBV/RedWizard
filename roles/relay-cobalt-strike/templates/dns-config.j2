@@ -1,0 +1,14 @@
+===========================================================
+DNS Configuration for CobaltStrike for {{ inventory_hostname }}:
+===========================================================
+
+Please make sure you configured the DNS records as follows:
+
+Name: 				TTL:	Type	Value
+@				5 Min	A		{{ ansible_host }}
+{{ dns_beacon_subdomain }}				5 Min	A		{{ ansible_host }}
+{{ dns_beacon_subdomain }}				5 Min	NS		{{ domain_name }}
+
+===========================================================
+
+

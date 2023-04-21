@@ -1,0 +1,56 @@
+===== Component: Backend - CobaltStrike for campaign {{ identification }} =====
+
+----- Running on server: {{ ansible_host }}
+
+----- Relay Server: {{ relay_host }} ({{ relay_host_ip }})
+
+----- Exposed ports: 50050
+
+----- Campaign for domain: {{ domain_name }}
+
+----- Preconfigured: Default HTTPS and DNS Listeners
+
+----- Usage:
+
+Before usage it is recommended to use the following SSH-config:
+
+```
+Host <Your Designation for this C2-Server>
+	HostName {{ ansible_host }}
+	LocalForward 50050 localhost:50050
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+	
+Host <Your Designation for the relay server>
+	HostName {{ relay_host_ip }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+
+```
+
+Next, get the configured URLs that you can use for your malleable profiles:
+
+```
+ssh <Your Designation for the relay server>
+
+```
+
+The welcome message will display the URL's that will be forwarded to the CobaltStrike instance.
+
+Next, connect to CobaltStrike by connecting to this server via SSH
+
+```
+ssh <Your Designation for this C2-Server>
+```
+
+Next point CobaltStrike to:
+```
+http://localhost:50050
+```
+
+Log-in to CobaltStrike using the preconfigured password.
+
+A default HTTPS and DNS listener should be preconfigured that can help you set up your own campaigns
+

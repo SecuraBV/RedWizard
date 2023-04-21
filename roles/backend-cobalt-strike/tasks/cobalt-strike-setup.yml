@@ -1,0 +1,80 @@
+---
+- name: "Cobalt Strike: Copy Docker build context"
+  become: yes
+  ansible.builtin.copy:
+    src: docker/
+    dest: "{{ cs_docker_path }}/{{ relay_host }}"
+    directory_mode: 0755
+
+- name: "Cobalt Strike: Select OpenVPN configuration based on pattern {{ cs_ovpn_pattern }}"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ openvpn_client_profile_path }}/{{ relay_host }}/{{ cs_ovpn_pattern }}"
+    dest: "{{ cs_docker_path }}/{{ relay_host }}/cobaltstrike.ovpn"
+    remote_src: yes
+
+- name: "Cobalt Strike: Copy .env file for docker-compose"
+  become: yes
+  ansible.builtin.template:
+    src: environment.j2
+    dest: "{{ cs_docker_path }}/{{ relay_host }}/.env"
+
+- name: "Cobalt Strike: Create Malleable C2 profiles folder"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ cs_docker_path }}/{{ relay_host }}/c2-profiles/"
+    state: directory
+    mode: '0755'
+
+- name: "Cobalt Strike: Initialising cobaltstrike variables"
+  become: yes
+  set_fact:
+    c2_tcp_port: "{{ 65535 | random(1024) }}"
+  run_once: yes
+
+- name: "Cobalt Strike: Create aggressor scripts folder"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ cs_docker_path }}/{{ relay_host }}/aggressor-scripts/"
+    state: directory
+    mode: '0755'
+
+- name: "Cobalt Strike: Install Malleable C2 profile {{ malleable_profile }}"
+  become: yes
+  ansible.builtin.template:
+    src: "{{ malleable_profile }}.j2"
+    dest: "{{ cs_docker_path }}/{{ relay_host }}/c2-profiles/{{ malleable_profile }}"
+    mode: 0755
+    force: yes
+
+- name: "Cobalt Strike: Install default HTTPS listener"
+  become: yes
+  ansible.builtin.template:
+    src: listener.service.cna.j2
+    dest: "{{ cs_docker_path }}/{{ relay_host }}/aggressor-scripts/listener.service.cna"
+    mode: 0755
+    force: yes
+
+- name: "Cobalt Strike: Build Docker image and create container (This can take 5+ minutes, do not depair)"
+  become: yes
+  community.docker.docker_compose:
+    build: yes
+    debug: yes
+    files:
+      - docker-compose.yml
+    project_src: "{{ cs_docker_path }}/{{ relay_host }}"
+    pull: no
+    recreate: smart
+    state: present
+    stopped: no
+    timeout: 10
+  register: result
+  failed_when: "not result.services.teamserver.teamserver.state.running"
+  changed_when: "result.actions in ['restart', 'create']"
+
+- name: "Cobalt Strike: Create symbolic link to Docker volumes in {{ toolkit_directory }}"
+  become: yes
+  ansible.builtin.file:
+    src: "/var/lib/docker/volumes"
+    dest: "{{ toolkit_directory }}/docker-volumes"
+    state: link

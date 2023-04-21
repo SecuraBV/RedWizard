@@ -1,0 +1,6 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+cs_docker_path: "{{ toolkit_directory }}/cobaltstrike"
+cs_ovpn_pattern: "cobaltstrike@{{ relay_host_ip }}.ovpn"
+
+help_marker: "backend_cobaltstrike_{{relay_host_ip}}"

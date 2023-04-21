@@ -1,0 +1,63 @@
+---
+- name: "SpiderFoot: Clone the git repository"
+  ansible.builtin.git:
+    repo: 'https://github.com/smicallef/spiderfoot.git'
+    dest: "{{ toolkit_directory }}/spiderfoot"
+
+- name: "SpiderFoot: Build Docker image (This can take 5+ Minutes, do not despair)"
+  become: yes
+  community.docker.docker_image:
+    build:
+      dockerfile: Dockerfile
+      path: "{{ toolkit_directory }}/spiderfoot"
+      rm: yes
+    debug: yes
+    name: spiderfoot
+    push: no
+    source: build
+    state: present
+    tag: latest
+
+- name: "SpiderFoot: Create Docker volume for storing data"
+  become: yes
+  community.docker.docker_volume:
+    volume_name: spiderfoot
+    state: present
+    recreate: never
+
+- name: "SpiderFoot: Start Docker container"
+  become: yes
+  community.docker.docker_container:
+    container_default_behavior: no_defaults
+    # TODO: Set a limit on CPU and memory to prevent max resources
+    #cpu_period:
+    #cpu_quota:
+    #cpu_shares:
+    cpus: 0.75
+    #cpuset_cpus:
+    #cpuset_mems:
+    debug: yes
+    hostname: spiderfoot
+    image: spiderfoot:latest
+    log_driver: journald
+    memory: 2G  # out of 4G
+    name: spiderfoot
+    network_mode: bridge
+    output_logs: yes
+    privileged: no
+    published_ports:
+      - 127.0.0.1:5001:5001
+    pull: no  # Image should be built locally and will not be pushed
+    restart_policy: unless-stopped
+    state: started
+    volumes:
+      # Store userdata in a named volume defined above
+      # Required to be able to save spiderfoot.db in case of recreated container
+      - "spiderfoot:/home/spiderfoot"
+
+- name: "SpiderFoot: Create symbolic link to Docker volume in {{ toolkit_directory }}/spiderfoot-userdata"
+  become: yes
+  ansible.builtin.file:
+    src: "/var/lib/docker/volumes/spiderfoot/_data"
+    dest: "{{ toolkit_directory }}/spiderfoot-userdata"
+    state: link

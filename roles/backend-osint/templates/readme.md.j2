@@ -1,0 +1,14 @@
+===== Component: OSINT Server with relay {{ relay_host_ip }} =====
+
+----- Running on server: {{ ansible_host }}
+
+----- Relay Server: {{ relay_host_ip }}
+
+----- Exposed ports: ssh and rdp
+
+----- Usage:
+
+This server hosts an always-on VPN connection to {{ relay_host_ip }}$
+There is a killswitch that prevents you from accessing the internet if VPN drops
+RDP is enabeled on this system so you can use the browser and desktop tools
+

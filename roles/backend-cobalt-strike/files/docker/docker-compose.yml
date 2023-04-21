@@ -1,0 +1,76 @@
+version: "3.7"
+
+services:
+  teamserver:
+    build:
+      context: .
+      args:
+        LICENSE_KEY: ${CS_LICENSE}
+    image: cobaltstrike:latest
+    container_name: teamserver
+    hostname: teamserver
+    environment:
+      - PASSWORD=${TEAMSERVER_PASSWORD}
+      - RELAYVPS=${RELAY_HOST}
+      - VPN=${VPN_CONFIG}
+      - LICENSE=${CS_LICENSE}
+      - C2_PROFILE=${MALLEABLE_PROFILE}
+      - CODENAME=${CODE_NAME}
+    ports:
+      - "50050:50050"
+      - "51000-51020:51000-51020"
+      - "22"
+      - "53"
+      - "80"
+      - "135"
+      - "138"
+      - "443"
+      - "445"
+      - "8080"
+      - "8443"
+    volumes:
+      - profiles:/opt/cobaltstrike/c2-profiles
+      - datamodel:/opt/cobaltstrike/data
+      - logs:/opt/cobaltstrike/logs
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    networks:
+      cobaltstrike:
+    restart: unless-stopped
+    command: ["./teamserver", "${RELAY_HOST}", "${TEAMSERVER_PASSWORD}", "/opt/cobaltstrike/c2-profiles/${MALLEABLE_PROFILE}"]
+    healthcheck:  # Search for C382 (hex of 50050) in the listening ports list
+      test: ["CMD", "grep", "C382", "/proc/net/tcp"]
+      interval: 30s
+      timeout: 1s
+      retries: 15
+      start_period: 30s
+
+  bot:
+    image: cobaltstrike:latest
+    container_name: bot
+    hostname: bot
+    environment:
+      - PASSWORD=${TEAMSERVER_PASSWORD}
+      - LICENSE=${CS_LICENSE}
+      - DISABLE_VPN=true
+    volumes:
+      - scripts:/opt/cobaltstrike/aggressor-scripts
+    depends_on:
+      - teamserver
+    networks:
+      cobaltstrike:
+    restart: unless-stopped
+    command: ["./agscript", "teamserver", "50050", "bot", "${TEAMSERVER_PASSWORD}", "/opt/cobaltstrike/aggressor-scripts/listener.service.cna"]
+
+volumes:
+  scripts:
+  profiles:
+  datamodel:
+  logs:
+
+networks:
+  cobaltstrike:
+    name: cobaltstrike
+    driver: bridge

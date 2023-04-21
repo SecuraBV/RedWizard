@@ -1,0 +1,5 @@
+---
+- name: "Checking whether the set domain name resolves to the ansible host"
+  ansible.builtin.assert:
+    that: ansible_host == lookup('dig', domain_name)
+  when: domain_name is defined

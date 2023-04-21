@@ -1,0 +1,45 @@
+---
+- name: "Install required packages"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - xfce4
+      - xfce4-goodies
+      - xorg
+      - dbus-x11
+      - x11-xserver-utils
+      - firefox
+      - xrdp
+    state: latest
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: "Add the xrdp user to the ssl-cert group"
+  become: yes
+  ansible.builtin.user:
+    name: xrdp
+    groups: ssl-cert
+    append: yes
+
+- name: "Configure xrdp to only listen to localhost"
+  become: yes
+  ansible.builtin.blockinfile:
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    path: /etc/xrdp/xrdp.ini
+    insertafter: "[Globals]"
+    block: |
+      address=127.0.0.1
+
+- name: "Add .xsession file for all users"
+  become: yes
+  ansible.builtin.copy:
+    content: |
+      startxfce4
+    dest: "/home/{{ item.value.username }}/.xsession"
+    owner: "{{ item.value.username }}"
+    group: "{{ item.value.username }}"
+    mode: 0775
+    force: yes
+  loop: "{{ lookup('dict', users, wantlist=True) }}"
+  notify: "Restart RDP Service"
+

@@ -1,0 +1,19 @@
+---
+# tasks file for relay-phishing
+- name: "***** PHISHING RELAY: Further preparing the operating system *****"
+  include_tasks: os-prep.yml
+
+- name: "***** PHISHING RELAY: Get LetsEncrypt certificate *****"
+  include_tasks: get-letsencrypt.yml
+
+- name: "***** PHISHING RELAY: Generate Client profiles *****"
+  include_tasks: ovpn-create-client.yml
+
+- name: "***** PHISHING RELAY: Further harden the server *****"
+  include_tasks: firewall-config.yml
+
+- name: "***** PHISHING RELAY: Configuring the mailserver *****"
+  include_tasks: configure-postfix.yml
+
+- name: "***** PHISHING RELAY: Write help text *****"
+  include_tasks: write-help.yml

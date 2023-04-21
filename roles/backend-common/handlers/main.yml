@@ -1,0 +1,14 @@
+---
+- name: restart sshd
+  become: yes
+  service:
+    name: sshd
+    state: restarted
+
+- name: saveiptables
+  become: yes
+  shell: iptables-save > /etc/iptables/rules.v4
+
+- name: saveip6tables
+  become: yes
+  shell: ip6tables-save > /etc/iptables/rules.v6

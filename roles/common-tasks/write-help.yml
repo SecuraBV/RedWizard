@@ -1,0 +1,17 @@
+---
+- name: "Write informative text to /etc/bash.bashrc"
+  become: yes
+  ansible.builtin.blockinfile:
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ help_marker }}"
+    path: /etc/bash.bashrc
+    insertafter: "Installed components:"
+    block: "{{ lookup('template', 'bash_help.j2') }}"
+
+- name: "Write informative text to {{ readme_location }}"
+  become: yes
+  ansible.builtin.blockinfile:
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ help_marker }}"
+    path: "{{ readme_location }}"
+    insertafter: ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    block: "{{ lookup('template', 'readme.md.j2') }}"
+

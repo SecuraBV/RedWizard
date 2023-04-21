@@ -1,0 +1,20 @@
+version: '3'
+services:
+  manualphish:
+    privileged: true
+    hostname: ${DOMAIN_NAME}
+    build:
+      context: .
+      args:
+        - VPN=${VPN_CONFIG}
+    container_name: manual-phish-${DOMAIN_NAME}
+    environment:
+      - VPN=${VPN_CONFIG}
+      - SMTP_HOST={SMTP_HOST}            #Within the VPN connection
+      - RELAY_HOST=${RELAY_HOST}
+      - CODENAME=${CODENAME}
+      - REAL_NAME=${REAL_NAME}
+      - USER_NAME=${USER_NAME}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    volumes:
+      - './logs:/var/log'

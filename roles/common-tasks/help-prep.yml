@@ -1,0 +1,29 @@
+- name: "Check the contents of the bashrc file"
+  become: yes
+  ansible.builtin.shell: "cat /etc/bash.bashrc"
+  register: help
+
+- name: "Logging: Write informative text to /etc/bash.bashrc"
+  become: yes
+  ansible.builtin.blockinfile:
+    marker: "# {mark} ANSIBLE MANAGED BLOCK WELCOME TEXT"
+    create: yes
+    path: /etc/bash.bashrc
+    block: |
+      echo ---------------------------------
+      echo Welcome to this RT machine: {{ inventory_hostname }} on {{ ansible_host }}
+      echo
+      echo Installed components:
+      echo
+      echo Please read the {{ readme_location }} file for more information about installed components
+      echo
+  when: '"Installed components" not in help.stdout'
+
+- name: "Create the basic readme file"
+  become: yes
+  ansible.builtin.template:
+    src: create_readme.j2
+    dest: "{{ readme_location }}"
+    mode: 0755
+    force: no
+

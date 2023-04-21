@@ -1,0 +1,66 @@
+---
+# #############################################################################
+# IP Space Configuration
+# #############################################################################
+
+# IP Space for allowing incoming SSH connections to the deployed infrastructure
+# Please set this to for example your companies outbound IP ranges
+\VAR{company_ip_space}
+
+
+# IP Space for your private C2 machines. These ranges determine what systems
+# are allowed to use the redirectors.
+\VAR{company_c2_space}
+
+# #############################################################################
+# Credentials
+# #############################################################################
+
+# User / ssh-key for all hosts
+# Note that if you need to configure individual keys
+# please do so in the hosts file for the respective hosts
+\VAR{ansible_user}
+
+# #############################################################################
+# RT Campaign
+# #############################################################################
+
+# The Codename for this RT assessment
+\VAR{codename}
+
+# Return emails for phishing campaigns will be forwarded to these addresses
+\VAR{phishing_reply_forwards} # space separated
+
+# Directory where RT tooling and docker-containers are stored
+# Usually no need to change this
+\VAR{toolkit_directory}
+
+# Address needed for Certbot to request Let's Encrypt certificates
+\VAR{certbot_mail_address}
+
+# #############################################################################
+# User accounts fot the RT backend servers.
+# #############################################################################
+
+# Please configure these values for your teammembers
+\VAR{users}
+
+# #############################################################################
+# Other configurations (Usually no change is needed here)
+# #############################################################################
+
+# Locales to use within the infrastructure
+\VAR{config_system_locale}
+\VAR{config_system_language}
+
+\VAR{ovpn_config_directory}
+
+\VAR{ansible_python_interpreter}
+
+\VAR{readme_location}
+
+# The internal IP space created by the openvpn servers on your redirectors
+# Usually there is no need to change this
+\VAR{internal_vpn_ip_space}
+\VAR{internal_vpn_ip_gateway}
+

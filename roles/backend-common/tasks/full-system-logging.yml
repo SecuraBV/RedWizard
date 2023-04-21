@@ -1,0 +1,92 @@
+
+- name: "Logging: Copy the informative text for the bash shell to /tmp/bash_config"
+  become: yes
+  ansible.builtin.copy:
+    src: bash_config
+    dest: /tmp/bash_config
+
+- name: "Logging: Check if /etc/rsyslog.d/bash.conf exists"
+  ansible.builtin.stat:
+    path: /etc/rsyslog.d/bash.conf
+  register: bash_conf
+
+- name: "Logging: Create empty /etc/rsyslog.d/bash.conf if it does not yet exist"
+  become: yes
+  ansible.builtin.file:
+    path: /etc/rsyslog.d/bash.conf
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+  when: bash_conf.stat.exists == 0
+
+- name: "Logging: Add local6 logging to /etc/rsyslog.d/bash.conf configuration"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: "/etc/rsyslog.d/bash.conf"
+    line: "local6.* /var/log/commands/commands.log"
+    state: present
+
+- name: "Logging: Add command logging to the /etc/logrotate.d/rsyslog"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: "/etc/logrotate.d/rsyslog"
+    line: "/var/log/commands/commands.log"
+    state: present
+
+- name: "Logging: Restart rsyslog"
+  become: yes
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+  changed_when: false # Always restart just to be sure. No need to mention changed message
+
+- name: "Logging: Create asciinema log directory /var/log/ascii"
+  become: yes
+  ansible.builtin.file:
+    path: /var/log/ascii
+    owner: root
+    group: rtspec
+    mode: 0773
+    state: directory
+
+- name: "Logging: Write informative text to /etc/bash.bashrc"
+  become: yes
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    block: "{{ lookup('file', 'bash_config') }}"
+    create: yes
+    state: present
+
+- name: "Logging: Create the /var/log/tcpdump directory"
+  become: yes
+  ansible.builtin.file:
+    path: /var/log/tcpdump
+    state: directory
+    owner: root
+    group: rtspec
+    mode: 0775
+
+- name: "Logging: Add AppArmor in complain mode to circumvent tcpdump permission issues"
+  become: yes
+  ansible.builtin.command: aa-complain /sbin/tcpdump
+  changed_when: false # Done always, so no change notification
+
+- name: "Logging: Copy the tcpdumper script to /etc/systemd/system/tcpdumper.service"
+  become: yes
+  ansible.builtin.template:
+    src: tcpdumper.j2
+    dest: /etc/systemd/system/tcpdumper.service
+
+- name: "Logging: Force systemd to reread configs"
+  become: yes
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: "Logging: Enable service for tcpdumper"
+  ansible.builtin.systemd:
+    name: tcpdumper
+    enabled: yes
+    state: started
+  become: yes
+

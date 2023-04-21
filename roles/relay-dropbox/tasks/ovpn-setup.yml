@@ -1,0 +1,25 @@
+# Because a persistent connection is important for the dropboxes, make sure
+# the portforward is sent to a persistent IP address
+- name: "OpenVPN Server: Add a client config for static IP addresses"
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "/etc/openvpn/server.conf"
+    line: 'client-config-dir ccd'
+    state: present
+
+- name: "OpenVPN Server: Copy configuration file {{ ovpn_config_directory }}/server/server.conf to /etc/openvpn"
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "/etc/openvpn/ccd/dropbox"
+    line: 'ifconfig-push {{ dropbox_docker_ip }} 255.255.255.255'
+    state: present
+    create: yes
+
+# TODO: Convert this into a handler that gets called when needed
+- name: "OpenVPN Server: Start the systemd service now and on (re)boot"
+  become: yes
+  ansible.builtin.systemd:
+    name: openvpn@server
+    enabled: yes
+    state: restarted
+

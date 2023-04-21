@@ -1,0 +1,12 @@
+---
+- name: "Checking server OS version"
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_distribution_version  is version('20', 'gt') # todo change to eq
+    fail_msg: "Invalid OS distribution or version"
+
+- name: "Checking Internet connectivity"
+  ansible.builtin.uri:
+    url: https://www.google.com
+

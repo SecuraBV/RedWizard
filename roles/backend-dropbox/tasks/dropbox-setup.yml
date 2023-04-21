@@ -1,0 +1,277 @@
+- name: Create local Dropbox keys directory
+  ansible.builtin.file:
+    path: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: Generate ECDSA host key for the dropboxes
+  command : "ssh-keygen -q -t ecdsa -f {{ export_path }}/dropbox_keys/{{ inventory_hostname }}/dropbox_key -C '' -N ''"
+  args:
+    creates: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/dropbox_key"
+  delegate_to: localhost
+
+- name: "Dropbox: Creating {{ dropbox_docker_path }}{{ relay_host }}/ directory"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/"
+    state: directory
+    mode: 0755
+
+- name: "Dropbox: Copy the Dropbox docker container"
+  become: yes
+  ansible.builtin.copy:
+    src: files/docker/
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/"
+
+- name: Copy the ECDSA Host key of the dropbox to the docker directory
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/dropbox_key"
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/files/id_dropbox"
+
+- name: "Dropbox selecting OVPN config based on pattern {{ dropbox_ovpn_pattern }}"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ openvpn_client_profile_path }}{{ relay_host }}/{{ dropbox_ovpn_pattern }}"
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/dropbox.ovpn"
+    remote_src: yes
+
+- name: Add Codename
+  ansible.builtin.lineinfile:
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/.env"
+    regexp: "^CODENAME=.*$"
+    line: "CODENAME={{ codename }}"
+    backrefs: yes
+  become: yes
+
+- name: "Setting Remote addresses"
+  ansible.builtin.lineinfile:
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/.env"
+    regexp: "^RELAY_HOST=.*$"
+    line: "RELAY_HOST={{ relay_host_ip }}"
+    backrefs: yes
+  become: yes
+
+- name: "Setting VPN Port addresses"
+  ansible.builtin.lineinfile:
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/.env"
+    regexp: "^VPN_PORT=.*$"
+    line: "VPN_PORT={{ relay_host_ip }}"
+    backrefs: yes
+  become: yes
+
+- name: "Check whether there already is a vpn config present"
+  local_action: stat path="{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/{{ dropbox_vpn_dir }}.zip"
+  register: existing_vpn_conf
+
+- name: "Upload the ovpn configuration to {{ export_path }}/dropbox_keys/{{ inventory_hostname }}/{{ dropbox_vpn_dir }}.zip if there is a local copy"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/{{ dropbox_vpn_dir }}.zip"
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}.zip"
+    force: no
+  when: existing_vpn_conf.stat.exists == True
+
+- name: "Dropbox: Unzip VPN Config to {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+  become: yes
+  ansible.builtin.unarchive:
+    src: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}.zip"
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/"
+    remote_src: yes
+  when: existing_vpn_conf.stat.exists == True
+
+- name: "Dropbox: Install the SparkLabs configuration generator"
+  become: yes
+  ansible.builtin.apt:
+    deb: https://github.com/thesparklabs/openvpn-configuration-generator/releases/download/1.0.8/openvpn-configuration-generator_20.04_1.0.8.deb
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "Dropbox: Copy visc to ovpn conversion script to {{ dropbox_docker_path }}/python3-convert-visc-to-ovpn.py"
+  become: yes
+  ansible.builtin.copy:
+    src: python3-convert-visc-to-ovpn.py
+    dest: "{{ dropbox_docker_path }}/python3-convert-visc-to-ovpn.py"
+
+
+- name: "Dropbox: Check if ovpn configuration exists in {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/"
+  become: yes
+  stat:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/config.conf"
+  register: vpn_exists
+
+- name: "Dropbox: Creating {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }} directory"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+    state: directory
+    mode: 0755
+
+- name: "Dropbox: Create ovpn profile (Generating keys take up to 240 seconds, since randomness is low on new installs)"
+  become: yes
+  ansible.builtin.expect:
+    command: "openvpn-generate init --path {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+    responses:
+      (?i)Server address: "{{ relay_host_ip }}"
+      (?i)Server Port: 1194
+      (?i)Protocol: 1  # UDP
+      (?i)Redirect all traffic through VPN: Y
+      (?i)Please select an option: 6  # Don't use DNS for VPN connections
+      (?i)Would you like to use anonymous defaults for certificate details: Y
+    echo: yes
+    timeout: 240
+  when: vpn_exists.stat.exists == False
+
+- name: "Dropbox: Copy preconfigured server.conf file for the dropbox backend"
+  become: yes
+  ansible.builtin.copy:
+    src: server.conf
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/server/server.conf"
+
+- name: "Make sure TLS authentication is enabled for OpenVPN"
+  ansible.builtin.lineinfile:
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/server/server.conf"
+    line: "tls-auth ta.key 0"
+    state: present
+  become: yes
+
+- name: "Dropbox: Create ovpn ta key for TLS Authentication"
+  become: yes
+  ansible.builtin.shell: "openvpn --genkey --secret {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/server/ta.key"
+  when: vpn_exists.stat.exists == False
+
+- name: "Download the ovpn TA key to {{ export_path }}/dropbox_keys/{{ inventory_hostname }}/client_profiles/ta.key directory"
+  become: yes
+  ansible.builtin.fetch:
+    src: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/server/ta.key"
+    dest: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/client_profiles/ta.key"
+    flat: yes
+  with_items: "{{ ovpn_client_files.files }}"
+
+- name: "OpenVPN clients: Check if ovpn configuration exists in {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+  become: yes
+  ansible.builtin.stat:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/config.conf"
+  register: ovpn_config
+
+- name: "Missing OpenVPN configuration. Can't create client profiles. Exiting."
+  become: yes
+  block:
+    - ansible.builtin.debug:
+        msg: "Missing OpenVPN configuration. Can't create client profiles. Exiting."
+
+    - meta: end_play
+  when: ovpn_config.stat.exists == False
+
+- name: "OpenVPN clients: Check to see if client profiles already exist in {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/clients/"
+  become: yes
+  ansible.builtin.stat:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/clients/{{ item }}.visz"
+  register: existing_client_profiles
+  with_items: "{{ client_profiles }}"
+  ignore_errors: True
+
+- name: "OpenVPN clients: Create ovpn client profile"
+  become: yes
+  ansible.builtin.expect:
+    command: "openvpn-generate client --path {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+    responses:
+      "Common Name": "{{ item.item }}"
+    echo: yes
+  with_items: "{{ existing_client_profiles.results }}"
+  when: item.stat.exists == False
+
+- name: "OpenVPN clients: Convert the client profiles from visc to ovpn"
+  become: yes
+  ansible.builtin.command: "python3 {{ dropbox_docker_path }}/python3-convert-visc-to-ovpn.py  {{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/clients/{{ item.item }}.visz"
+  with_items: "{{ existing_client_profiles.results }}"
+  when: item.stat.exists == False
+
+- name: Map remote client profiles
+  become: yes
+  ansible.builtin.find:
+    paths: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}/clients/"
+    recurse: no
+    patterns: "*.ovpn"
+  register: ovpn_client_files
+
+- name: "Make sure TLS authentication is enabled for OpenVPN client profiles 1/2"
+  ansible.builtin.blockinfile:
+    marker: "# ANSIBLE OUTER BLOCK"
+    dest: "{{ item.path }}"
+    block: |
+      tls-auth ta.key 1
+      key-direction 1
+      <tls-auth>
+      </tls-auth>
+    state: present
+  become: yes
+  with_items: "{{ ovpn_client_files.files }}"
+
+- name: "Make sure TLS authentication is enabled for OpenVPN client profiles 2/2"
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    search_string: 'remote {{ relay_host_ip }}'
+    line: 'remote {{ relay_host_ip }} {{ exposed_port }} udp'
+    state: present
+  with_items: "{{ ovpn_client_files.files }}"
+
+- name: "Configure the correct external VPN port for OpenVPN client profiles"
+  ansible.builtin.blockinfile:
+    marker: "# ANSIBLE INNER BLOCK"
+    dest: "{{ item.path }}"
+    insertafter: "<tls-auth>"
+    block: "{{ lookup('file', export_path+'/dropbox_keys/'+inventory_hostname+'/client_profiles/ta.key') }}"
+    state: present
+  become: yes
+  with_items: "{{ ovpn_client_files.files }}"
+
+- name: Create local OpenVPN client profiles directory
+  ansible.builtin.file:
+    path: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/client_profiles/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: "Download the client profiles to {{ export_path }}/dropbox_keys/{{ inventory_hostname }}/client_profiles/ directory"
+  become: yes
+  ansible.builtin.fetch:
+    src: "{{ item.path }}"
+    dest: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/client_profiles/"
+    flat: yes
+  with_items: "{{ ovpn_client_files.files }}"
+
+- name: "Dropbox: Archive VPN Config on the server"
+  become: yes
+  ansible.builtin.archive:
+    path: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}"
+    dest: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}.zip"
+    format: zip
+
+- name: "Download the ovpn configuration to the {{ export_path }}/dropbox_keys/{{ inventory_hostname }} directory"
+  become: yes
+  ansible.builtin.fetch:
+    src: "{{ dropbox_docker_path }}{{ relay_host }}/{{ dropbox_vpn_dir }}.zip"
+    dest: "{{ export_path }}/dropbox_keys/{{ inventory_hostname }}/{{ dropbox_vpn_dir }}.zip"
+    flat: yes
+  changed_when: false # Done always, so no change notification
+
+- name: "Build Docker image and create container (This can take 5+ minutes, do not despair)"
+  become: yes
+  community.docker.docker_compose:
+    build: yes
+    debug: yes
+    files:
+      - docker-compose.yml
+    project_src: "{{ dropbox_docker_path }}{{ relay_host }}"
+    pull: no
+    recreate: never  # Prevent losing project data
+    state: present
+    stopped: no
+    timeout: 10
+
+

@@ -1,0 +1,106 @@
+---
+- name: "Check whether there already is a letsencrypt certificate present"
+  become: yes
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{domain_name}}/fullchain.pem"
+  register: letsencrypt
+
+- name: "Check whether there is a local letsencrypt configuration for the certificate in question already"
+  ansible.builtin.stat:
+    path: "{{ export_path }}/letsencrypt/{{ domain_name }}/letsencrypt.tgz"
+  register: local_config
+  delegate_to: localhost
+  when: letsencrypt.stat.exists == False
+
+- name: "Copy the letsencrypt configuration to the remote server when it exists locally"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ export_path }}/letsencrypt/{{ domain_name }}/letsencrypt.tgz"
+    dest: "/etc/letsencrypt.tgz"
+  when: letsencrypt.stat.exists == False and local_config.stat.exists
+
+- name: "Unpack the letsencrypt configuration"
+  become: yes
+  ansible.builtin.unarchive:
+    src: "/etc/letsencrypt.tgz"
+    dest: "/etc/"
+    remote_src: yes
+  when: letsencrypt.stat.exists == False and local_config.stat.exists
+
+- name: "Now check again whether there already is a letsencrypt certificate present"
+  become: yes
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{domain_name}}/fullchain.pem"
+  register: letsencrypt
+
+- name: "Stop NGINX (Failures at stopping are fine here)"
+  become: yes
+  ansible.builtin.service:
+    name: nginx
+    state: stopped
+  changed_when: false # Always stop and start just to be sure. No need to mention changed message
+  when: letsencrypt.stat.exists == False
+  ignore_errors: yes # Evilginx2 for example does not have nginx running
+
+- name: "Temporarily allow HTTP traffic for LetsEncrypt"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: "80"
+    jump: ACCEPT
+    protocol: tcp
+    state: present
+  changed_when: false # Done always, so no change notification
+  when: letsencrypt.stat.exists == False
+
+- name: "Request cert for {{ domain_name }}"
+  become: yes
+  ansible.builtin.command:
+    cmd: "certbot certonly -d {{ domain_name }} -n --standalone --agree-tos -m {{ certbot_mail_address }}"
+    creates: "/etc/letsencrypt/live/{{domain_name}}/fullchain.pem"
+  when: letsencrypt.stat.exists == False
+
+- name: "Again disallow HTTP traffic for LetsEncrypt"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: "80"
+    jump: ACCEPT
+    protocol: tcp
+    state: absent
+  changed_when: false # Done always, so no change notification
+  when: letsencrypt.stat.exists == False
+
+- name: "Create local LetsEncrypt certificates directory"
+  ansible.builtin.file:
+    path: "{{ export_path }}/letsencrypt/{{ domain_name }}/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: "Compress the /etc/letsencrypt directory into /etc/letsencrypt.tgz"
+  become: yes
+  ansible.builtin.archive:
+    path: /etc/letsencrypt
+    dest: /etc/letsencrypt.tgz
+
+- name: "Download the client profiles to the {{ export_path }} directory"
+  become: yes
+  ansible.builtin.fetch:
+    src: "/etc/letsencrypt/live/{{ domain_name }}/{{ item }}"
+    dest: "{{ export_path }}/letsencrypt/{{ domain_name }}/{{ item }}"
+    flat: yes
+  with_items:
+    - "cert.pem"
+    - "chain.pem"
+    - "README"
+    - "fullchain.pem"
+    - "privkey.pem"
+
+- name: "Download the letsencrypt configuration to the {{ export_path }} directory"
+  become: yes
+  ansible.builtin.fetch:
+    src: "/etc/letsencrypt.tgz"
+    dest: "{{ export_path }}/letsencrypt/{{ domain_name }}/letsencrypt.tgz"
+    flat: yes
+  changed_when: false # Done always, so no change notification

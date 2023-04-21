@@ -1,0 +1,9 @@
+---
+- name: "***** RELAY - Cobaltstrike: Enable IP Forwarding *****"
+  include_tasks: ip-forwarding.yml
+
+- name: "***** RELAY - Cobaltstrike: Configure Forwards *****"
+  include_tasks: cobaltstrike-config.yml
+
+- name: "***** RELAY - Cobaltstrike: Write help text *****"
+  include_tasks: write-help.yml

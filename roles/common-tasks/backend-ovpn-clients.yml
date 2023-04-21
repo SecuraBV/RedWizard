@@ -1,0 +1,22 @@
+---
+- name: "Create local OpenVPN client profiles directory: {{ openvpn_client_profile_path }}{{ relay_host }}/"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ openvpn_client_profile_path }}{{ relay_host }}/"
+    state: directory
+    recurse: true
+
+- name: Map local client profiles
+  ansible.builtin.find:
+    paths: "{{ export_path }}/client_profiles/{{ relay_host }}/"
+    recurse: no
+    patterns: "*.ovpn"
+  register: ovpn_client_files
+  delegate_to: localhost
+
+- name: Copy OpenVPN profiles to remote C2
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ export_path }}/client_profiles/{{ relay_host }}/{{ item.path | basename }}"
+    dest: "{{ openvpn_client_profile_path }}{{ relay_host }}/{{ item.path | basename }}"
+  with_items: "{{ ovpn_client_files.files }}"

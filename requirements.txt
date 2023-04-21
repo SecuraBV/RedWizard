@@ -1,0 +1,11 @@
+click
+requests
+jinja2
+pyyaml
+validators
+IPy
+ansible
+diagrams
+ansible-vault
+coloredlogs
+colorama

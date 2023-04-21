@@ -1,0 +1,6 @@
+- name: "***** USERS: Configure the users *****"
+  include_tasks: user-config.yml
+
+- name: "***** USERS: Quality of life *****"
+  include_tasks: quality-of-life.yml
+

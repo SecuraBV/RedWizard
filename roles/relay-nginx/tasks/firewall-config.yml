@@ -1,0 +1,9 @@
+- name: "RELAY - NGINX: Allow 443 for webserver"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: "443"
+    jump: ACCEPT
+    protocol: tcp
+    state: present
+  changed_when: false # Done always, so no change notification

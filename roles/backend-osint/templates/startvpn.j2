@@ -1,0 +1,105 @@
+#!/bin/bash
+
+trap ctrl_c INT
+VPN_FILE=$1
+TUNNEL=tun0
+
+function check_running() {
+    if [[ $(ip link | grep $TUNNEL | grep ",UP,") == *$TUNNEL* ]]; then
+        echo "VPN Already up, exiting"
+        exit 0
+    fi
+}
+
+function check_permission() {
+	if test " `id -u`" != " 0"
+		then
+		echo "permission denied (use sudo)"
+		exit 1
+	fi
+}
+
+function check_argument() {
+	if [ -z $VPN_FILE ]
+		then
+		echo "First argument must be VPN file(.ovpn)"
+		exit 1
+	fi
+}
+
+function ensure_ssh_connectivity() {
+	{% for companyip in company_ip_space %}
+	ip route add {{ companyip }} via {{ ansible_default_ipv4.gateway }}
+	{% endfor %}
+}
+
+function config() {
+	#Get the default network interface
+	echo "Detecting your default network interface..."
+	INTERFACE=`ip addr | grep "state UP" | cut -d ":" -f 2 | head -n 1`
+	echo "Using "$INTERFACE
+
+	echo "Using interface "$TUNNEL " for VPN, change the script if you need another one."
+
+	#Get the VPN IP, PORT and PROTOCOL from the VPN file
+	echo "Detecting your VPN server address..."
+	IP=`cat $VPN_FILE | grep "remote " | awk '{print $2}'`
+	echo "Using IP "$IP
+
+	echo "Detecting your VPN port..."
+	PORT=`cat $VPN_FILE | grep "remote " | awk '{print $3}'`
+	echo "Using port "$PORT
+
+	echo "Detecting your VPN protocol..."
+	PROTOCOL=`cat $VPN_FILE | grep "remote " | awk '{print $4}'`
+	echo "Using protocol "$PROTOCOL
+}
+
+function ctrl_c() {
+	echo "Flushing iptables and exiting"
+	exit 1
+}
+
+function set_firewall_rules() {
+    echo "Setting firewall rules"
+    ##Allow connection with the VPN IP
+    iptables -A OUTPUT -p $PROTOCOL -d $IP --dport $PORT -j ACCEPT
+    iptables -A INPUT -p $PROTOCOL -s $IP --sport $PORT -j ACCEPT
+    ##Allow connection through the tunnel
+    iptables -A OUTPUT -o $TUNNEL -j ACCEPT
+    iptables -A INPUT -i $TUNNEL -j ACCEPT
+    ##Block all connection through the main interface, but allow outgoing for SSH
+    {% for companyip in company_ip_space %}
+    iptables -A OUTPUT -o $INTERFACE -j ACCEPT -d {{ companyip }}
+    {% endfor %}
+    iptables -A OUTPUT -o $INTERFACE -j DROP
+    iptables -A INPUT -i $INTERFACE -j DROP
+}
+
+function reconnect() {
+	echo "Reconnecting VPN"
+	#Kill older openvpn processes to avoid creating new tunnels
+	kill `ps -ef | grep "openvpn $VPN_FILE" | grep -v "grep" | awk '{print $2}'` > /dev/null 2>&1
+	#Start openvpn
+	/usr/sbin/openvpn $VPN_FILE &
+}
+
+#Check every 20 seconds if VPN goes down, then reconnect it
+function check_connection() {
+	echo "Check VPN connection"
+	while [ true ]
+	do
+		if [[ $(ip link | grep $TUNNEL | grep ",UP,") != *$TUNNEL* ]]; then
+			reconnect
+		fi
+		sleep 20
+	done
+}
+
+check_running
+check_permission
+check_argument
+ensure_ssh_connectivity
+config
+set_firewall_rules
+check_connection

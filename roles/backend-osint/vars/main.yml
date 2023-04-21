@@ -1,0 +1,13 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+osint_ovpn_pattern: "osint@{{ relay_host_ip }}.ovpn"
+
+rdp_desktop_packages:
+  - xfce4 
+  - xfce4-goodies 
+  - xorg 
+  - dbus-x11 
+  - x11-xserver-utils
+  - firefox
+
+help_marker: "backend_osint"

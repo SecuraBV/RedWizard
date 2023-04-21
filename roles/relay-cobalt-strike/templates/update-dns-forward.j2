@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# The goal of this script is to dynamically determine the connected openvpn
+# connection with a given name and set the dns forward for the incoming cs beacons
+
+TARGET={{ relay_to_client_profile }}
+CONTAINERIP=$(/usr/sbin/iptables-save  | grep "Cobaltstrike Forward" | grep dport | cut -d" " -f4)
+SYSTEMIP=$(ip -4 addr show ens3 | awk '/inet/ { print $2 }' | cut -d "/" -f1)
+
+NEWCONTAINERIP=$(cat /etc/openvpn/openvpn-status.log | grep $TARGET | tail -n1 | cut -d"," -f1)
+
+if [ -z "$NEWCONTAINERIP" ]
+then
+      NEWCONTAINERIP=127.0.0.1
+fi
+
+if [ "$CONTAINERIP" = "$NEWCONTAINERIP"/32 ]; then
+    :
+else
+    # First flush all old CS related forward rules. This seemed to be the
+    # easiest way with the least amount of neccesary error handling
+    /usr/sbin/iptables-save | grep -v "Cobaltstrike Forward" | /usr/sbin/iptables-restore
+
+    # Mark incoming DNS packets with the tag 0x400
+    /usr/sbin/iptables -t nat -A PREROUTING -m state --state NEW --protocol udp --destination ${SYSTEMIP} --destination-port 53 -j MARK --set-mark 0x400 -m comment --comment "Cobaltstrike Forward"
+
+    # For every marked packet, apply a DNAT and a SNAT (in this case, a MASQUERADE)
+    /usr/sbin/iptables -t nat -A PREROUTING -m mark --mark 0x400 --protocol udp -j DNAT --to-destination ${NEWCONTAINERIP}:53 -m comment --comment "Cobaltstrike Forward"
+    /usr/sbin/iptables -t nat -A POSTROUTING -m mark --mark 0x400 -j MASQUERADE -m comment --comment "Cobaltstrike Forward"
+fi

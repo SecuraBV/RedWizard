@@ -1,0 +1,4 @@
+client_profiles:
+  - "osint"
+
+help_marker: "relay_osint_{{ansible_host}}"

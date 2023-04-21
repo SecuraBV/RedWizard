@@ -1,0 +1,20 @@
+'------------------------------------------------------'
+
+'This is the README for the mailserver setup for {{ domain_name }}'
+
+POSTINSTALL INSTRUCTIONS:
+'  Configure your DNS settings according to {{ toolkit_directory }}/dns_config.txt'
+'  Enable outgoing mail ports in your VPS provider'
+'  Set reverse DNS in your VPS control panel to {{ domain_name }}'
+
+Any of our clients connected via OpenVPN can use this mailserver. Use the following information to connect:
+'  SMTP_HOST={{ internal_vpn_ip_gateway }}'
+'  DOMAIN_NAME={{ domain_name }}'
+'  VPN_CONFIG=manual-phish.ovpn OR gophish.ovpn'
+'  RELAY_HOST={{ ansible_host }}'
+'  CODENAME=DEVELOPMENT'
+
+Happy phishing!
+
+'------------------------------------------------------'
+

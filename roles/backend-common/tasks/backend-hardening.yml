@@ -1,0 +1,71 @@
+---
+- name: "Allow all inbound loopback traffic"
+  become: yes
+  ansible.builtin.iptables:
+    action: append
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow already established inbound connections"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound ICMP traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: ACCEPT
+    protocol: icmp
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Allow inbound SSH traffic from Company IP space"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    destination_port: "22"
+    jump: ACCEPT
+    protocol: tcp
+    source: "{{ item }}"
+    wait: 60
+  with_items: "{{ company_ip_space }}"
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Drop all other inbound traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    policy: DROP
+    wait: 60
+  notify: saveiptables
+  register: iptables_action
+  retries: 10
+  until: iptables_action is success or 'Another app is currently holding the xtables lock' not in iptables_action.msg
+
+- name: "Deploy SSH server configuration from template"
+  become: yes
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+  notify:
+    - restart sshd

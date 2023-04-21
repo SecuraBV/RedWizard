@@ -1,0 +1,19 @@
+-----------------------------------------------------------
+Welcome to the manual phishing container. Follow up steps:
+
+1: Check you are logged in as the "mutt" user
+2: Verify the sender details in .muttrc and .msmtprc
+3: You can easily change the name you are sending the email from with 
+   the change-sender-name.sh mail
+4: Edit the email source files in EMAIL-Source-with-link.html or the 
+   or EMAIL-Source-with-attachment.html
+5: Edit your send scripts in send-link.sh or send-attachment.sh
+6: If you want you can prepare the sending in send-all-mails.sh
+7: If you want to send an attachment, make sure to change the permissions with
+   chown mutt:mutt <filename>, You can obtain root access by just typing "exit"
+
+DO NOT FORGET TO TEST YOUR MAIL
+- Send it to yourself
+- Use mail-tester.com
+- Check if everything works from mobile and laptop
+- See if the links reachable outside Company IP space

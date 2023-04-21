@@ -1,0 +1,16 @@
+---
+- name: "User management: Ensure group 'rtspec' exists"
+  become: yes
+  ansible.builtin.group:
+    name: rtspec
+    state: present
+
+- name: "Create the RT Toolkit directory in {{ toolkit_directory }}"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ toolkit_directory }}"
+    owner: root
+    group: rtspec
+    mode: 0773
+    state: directory
+

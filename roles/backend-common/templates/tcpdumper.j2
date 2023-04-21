@@ -1,0 +1,14 @@
+[Unit]
+Description=start tcpdumper service
+After=network.target
+
+[Service]
+Environment="TCPDUMP_FORMAT=%%Y-%%m-%%d__%%H:%%M:%%S"
+ExecStart=/sbin/tcpdump -i {{ ansible_default_ipv4.interface }} -Z root -G 1800 -s 65535 -w '/var/log/tcpdump/tcpdump_${TCPDUMP_FORMAT}.pcap' -C 500 port not 22 and port not 1194 and not arp
+ExecStop=/bin/kill -s TERM $MAINPID
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+ 
+

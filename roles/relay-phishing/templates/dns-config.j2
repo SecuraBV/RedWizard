@@ -1,0 +1,20 @@
+===========================================================
+DNS Configuration for {{ inventory_hostname }}:
+===========================================================
+
+Please make sure you configured the DNS records as follows:
+
+Name: 				TTL:	Type	Value
+@				5 Min	A		{{ ansible_host }}
+@				5 Min	MX		10 {{ domain_name }}.
+@				5 Min	TXT		v=spf1 mx:{{ domain_name }} ip4:{{ ansible_host }} -all
+mail				5 Min	A		{{ ansible_host }}
+_dmarc				5 Min	TXT		v=DMARC1; p=none; sp=none; adkim=s; aspf=s; rua=mailto:dmarc-reports@{{ domain_name }}; ruf=mailto:dmarc-reports@{{ domain_name }}; fo=1
+mail._domainkey			1 Min	TXT	 	{{ dkim_contents['content'] | b64decode | regex_replace("t=y;","") }}
+
+Make sure there are no newlines in your dkim signature
+ALSO MAKE SURE OUTGOING MAIL PORTS ARE ENABELED IN YOUR VPS SETTINGS!
+
+===========================================================
+
+

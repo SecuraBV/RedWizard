@@ -1,0 +1,37 @@
+---
+- name: "Iptables: Allow Mail Server Traffic outbound"
+  become: yes
+  ansible.builtin.iptables:
+    chain: OUTPUT
+    out_interface: "{{ ansible_default_ipv4.interface }}"
+    destination_port: "{{ item }}"
+    jump: ACCEPT
+    protocol: tcp
+  loop:
+    - "25"
+    - "143"
+    - "587"
+    - "993"
+
+- name: "Iptables: Allow inbound SMTP traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    in_interface: "{{ ansible_default_ipv4.interface }}"
+    destination_port: "{{ item }}"
+    jump: ACCEPT
+    protocol: tcp
+  loop:
+    - "25"
+
+
+- name: "Iptables: Allow inbound SMTP OpenVPN traffic"
+  become: yes
+  ansible.builtin.iptables:
+    chain: INPUT
+    in_interface: "tun0"
+    destination_port: "25"
+    jump: ACCEPT
+    protocol: tcp
+  loop:
+    - "25"

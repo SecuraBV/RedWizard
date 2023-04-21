@@ -1,0 +1,18 @@
+#Create Recording directory
+RECDIR="/var/log/ascii/$USER"
+[[ -d $RECDIR ]] || mkdir -p $RECDIR
+
+#Name of the recording file
+RECFILE="$RECDIR"/$(date +%s%N).asciinema
+
+# Enable CLI Logging by Mansur 08-12-2016 
+whoami="$(whoami)";export PROMPT_COMMAND='RETRN_VAL=$?;logger -p local6.debug "$whoami [$$]: $(history 1 | sed "s/^[ ]*[0-9]\+[ ]*//" ) [$RETRN_VAL]"'
+
+if [[ ${ASCIINEMA_REC:+1} ]] ; then
+    echo Recording to: $RECDIR, Commands saved to: /var/log/commands
+else
+    if ! ps -aux | grep asciinema | grep -v "grep" > /dev/null
+    then
+        asciinema rec $RECFILE
+    fi
+fi

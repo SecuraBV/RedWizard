@@ -1,0 +1,32 @@
+===== Component: Backend - ManualPhish for campaign {{ domain_name }} =====
+
+----- Running on server: {{ ansible_host }}
+
+----- Relay Mail Server: {{ relay_host }} ({{ relay_host_ip }})
+
+----- Manual Phish for domain: {{ domain_name }}
+
+----- Preconfigured: Sending profiles
+
+----- Usage:
+
+Before usage it is recommended to use the following SSH-config:
+
+```
+Host <Your Designation for this C2-Server>
+	HostName {{ ansible_host }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+	
+Host <Your Designation for the relay server>
+	HostName {{ relay_host_ip }}
+	User <Your Username>
+	IdentityFile ~/.ssh/<your keyfile>
+	IdentitiesOnly yes
+
+```
+
+Use docker-info.sh and docker-interact.sh to interact with the deployed manual phish container.
+The welcome message shows the steps you can take to send out a mual phishing email from your command line via the deployed mailserver.
+

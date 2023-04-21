@@ -1,0 +1,14 @@
+'------------------------------------------------------'
+
+'This is the README for the reverse nginx setup for {{ relay_to_client_profile }}'
+
+
+'Traffic forward to incoming vpn designated "{{ relay_to_client_profile }}"'
+'Secret Strings that will be forwarded:'
+{% for string in secret_strings %}
+'  - https://{{ domain_name }}/{{ string.string }}'
+'    Forwarded to: {{ string.connection_method }}://<ip for {{ relay_to_client_profile }}>{{ string.forward_path }}'
+{% endfor %}
+
+'------------------------------------------------------'
+

@@ -1,0 +1,19 @@
+- name: "User management: Symlink {{ toolkit_directory }} directory to homedir"
+  become: yes
+  ansible.builtin.file:
+    src: "{{ toolkit_directory }}"
+    dest: "/home/{{ item.value.username }}{{ toolkit_directory }}"
+    state: link
+  loop: "{{ lookup('dict', users, wantlist=True) }}"
+
+- name: "Copy Quality of life scripts"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ toolkit_directory }}/{{ item }}"
+    owner: root
+    group: rtspec
+    mode: 0770
+  with_items:
+    - docker-interact.sh
+    - docker-info.sh

@@ -1,0 +1,19 @@
+version: '3'
+services:
+  dropbox:
+    privileged: true
+    build:
+      context: .
+      args:
+        - VPN=${VPN_CONFIG}
+        - VPNPORT=${VPNPORT}
+    container_name: dropbox-backend
+    environment:
+      - VPN=${VPN_CONFIG}
+      - RELAY_HOST=${RELAY_HOST}
+      - CODENAME=${CODENAME}
+    volumes:
+      - './logs:/var/log'
+    ports:
+      - '${VPNPORT}:1194'
+

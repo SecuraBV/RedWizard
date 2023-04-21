@@ -1,0 +1,7 @@
+---
+# vars file for relay-dropbox
+#
+client_profiles:
+  - "dropbox"
+
+help_marker: "relay_dropbox"

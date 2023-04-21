@@ -1,0 +1,10 @@
+GREEN='\033[0;32m'
+CYAN='\033[0;96m'
+NC='\033[0m' # No Color
+echo -e "${GREEN}- Reverse Nginx server for {{ domain_name }}${NC}"
+echo -e "  Traffic forward to incoming vpn designated ${CYAN}'{{ relay_to_client_profile }}'${NC}"
+echo '  Secret Strings that will be forwarded:'
+{% for string in secret_strings %}
+echo '  - https://{{ domain_name }}/{{ string.string }}'
+echo '    Forwarded to: {{ string.connection_method }}://<ip for {{ relay_to_client_profile }}>{{ string.forward_path }}'
+{% endfor %}

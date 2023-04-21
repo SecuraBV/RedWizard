@@ -1,0 +1,12 @@
+---
+- name: "***** OSINT RELAY: Generate Client profiles *****"
+  include_tasks: ovpn-create-client.yml
+
+- name: "***** OSINT RELAY: Further harden the server *****"
+  include_tasks: firewall-config.yml
+
+- name: "***** OSINT RELAY: Enable ip forwarding *****"
+  include_tasks: ip-forwarding.yml
+
+- name: "***** OSINT RELAY: Write help text *****"
+  include_tasks: write-help.yml

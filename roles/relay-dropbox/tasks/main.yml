@@ -1,0 +1,15 @@
+---
+- name: "***** DROPBOX RELAY: Generate Client profiles *****"
+  include_tasks: ovpn-create-client.yml
+
+- name: "***** DROPBOX RELAY: Further harden the server *****"
+  include_tasks: firewall-config.yml
+
+- name: "***** DROPBOX RELAY: Enable ip forwarding *****"
+  include_tasks: ip-forwarding.yml
+
+- name: "***** DROPBOX RELAY: Set Static IP for dropboc docker *****"
+  include_tasks: ovpn-setup.yml
+
+- name: "***** DROPBOX RELAY: Write help text *****"
+  include_tasks: write-help.yml

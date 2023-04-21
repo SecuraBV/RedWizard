@@ -1,0 +1,157 @@
+# Source inspiration: https://github.com/mantvydasb/Red-Team-Infrastructure-Automation/blob/master/phishing-rdr.tf
+
+- name: "Postfix: Copy postfix config file to /etc/postfix/master.cf"
+  become: yes
+  ansible.builtin.copy:
+    src: "master.cf"
+    dest: "/etc/postfix/master.cf"
+
+- name: "Postfix: Copy postfix header checks to /etc/postfix/header_checks"
+  become: yes
+  ansible.builtin.copy:
+    src: "header_checks"
+    dest: "/etc/postfix/header_checks"
+
+- name: "Postfix: Configure postfix"
+  become: yes
+  ansible.builtin.command: "postconf -e {{ item.key }}={{ item.value }}"
+  loop: "{{ lookup('dict', postfix_config) }}"
+  changed_when: false # Done always, so no change notification
+
+- name: "Postfix: copy the template for email forwards"
+  become: yes
+  ansible.builtin.template:
+    src: "virtual.j2"
+    dest: "/etc/postfix/virtual"
+
+- name: "Postfix: Add {{ domain_name }} to /etc/mailname"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/mailname
+    create: yes
+    line: "{{ domain_name }}"
+    state: present
+
+- name: "OpenDKIM: Copy opendkim config file to /etc/opendkim.conf"
+  become: yes
+  ansible.builtin.copy:
+    src: "opendkim.conf"
+    dest: "/etc/opendkim.conf"
+
+- name: "OpenDKIM: Create /etc/opendkim/keys/{{ domain_name }} if it does not exist"
+  become: yes
+  ansible.builtin.file:
+    path: "/etc/opendkim/keys/{{ domain_name }}"
+    state: directory
+    mode: '0755'
+
+- name: "OpenDKIM: Create opendkim keys"
+  become: yes
+  ansible.builtin.command: "opendkim-genkey -t -s mail -d {{ domain_name }}"
+  args:
+    chdir: "/etc/opendkim/keys/{{ domain_name }}"
+    creates: "/etc/opendkim/keys/{{ domain_name }}/mail.txt"
+
+- name: "OpenDKIM: Create the DNS entry for the DKIM keys"
+  become: yes
+  ansible.builtin.shell: |
+    cat mail.txt | tr -d '\r\n\t\\"\ ' | cut -d"(" -f2 | cut -d ")" -f1 > /root/dkim.txt
+  args:
+    chdir: "/etc/opendkim/keys/{{ domain_name }}"
+    creates: "/root/dkim.txt"
+
+- name: "OpenDKIM: Change ownership of mail.private to opendkim:opendkim"
+  become: yes
+  ansible.builtin.file:
+    path: "/etc/opendkim/keys/{{ domain_name }}/mail.private"
+    owner: opendkim
+    group: opendkim
+
+- name: "OpenDKIM: Configure /etc/opendkim/KeyTable"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/opendkim/KeyTable
+    create: yes
+    line: "mail._domainkey.{{ domain_name }} {{ domain_name }}:mail:/etc/opendkim/keys/{{ domain_name }}/mail.private"
+    state: present
+
+- name: "OpenDKIM: Configure /etc/opendkim/SigningTable"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/opendkim/SigningTable
+    create: yes
+    line: "*@{{ domain_name }} mail._domainkey.{{ domain_name }}"
+    state: present
+
+- name: "OpenDKIM: Configure /etc/default/opendkim"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/default/opendkim
+    create: yes
+    line: "SOCKET=\"inet:12345@localhost\""
+    state: present
+
+- name: "OpenDKIM: Configure /etc/opendkim/TrustedHosts"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/opendkim/TrustedHosts
+    create: yes
+    line: '{{ item }}'
+    state: present
+  with_items:
+    - "{{ ansible_host }}"
+    - "*.{{ domain_name }}"
+    - "localhost"
+    - "127.0.0.1"
+    - "{{ internal_vpn_ip_space }}"
+
+- name: "Postfix: Postmap /etc/postfix/header_checks"
+  become: yes
+  ansible.builtin.command: "postmap /etc/postfix/header_checks"
+  changed_when: false # Done always, so no change notification
+
+- name: "Postfix: Postmap /etc/postfix/virtual"
+  become: yes
+  ansible.builtin.command: "postmap /etc/postfix/virtual"
+  changed_when: false # Done always, so no change notification
+
+- name: "Postfix: Reload postfix"
+  become: yes
+  ansible.builtin.command: "postfix reload"
+  changed_when: false # Done always, so no change notification
+
+- name: "Restart Postfix and Opendkim"
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  become: yes
+  loop:
+    - postfix
+    - opendkim
+  changed_when: false # Done always, so no change notification
+
+- name: "OpenDKIM: Load DKIM Configuration"
+  become: yes
+  ansible.builtin.slurp:
+    src: /root/dkim.txt
+  register: dkim_contents
+
+- name: "SMTP Server: Create a DNS Template"
+  ansible.builtin.template:
+    src: dns-config.j2
+    dest: "{{ toolkit_directory }}/dns_config_{{ inventory_hostname }}.txt"
+
+- name: Create local DNS-Config directory
+  ansible.builtin.file:
+    path: "{{ export_path }}/dns_configs/"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+
+- name: "Download the client profiles to {{ export_path }} directory"
+  ansible.builtin.fetch:
+    src: "{{ toolkit_directory }}/dns_config_{{ inventory_hostname }}.txt"
+    dest: "{{ export_path }}/dns_configs/"
+    flat: yes
+

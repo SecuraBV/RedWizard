@@ -1,0 +1,100 @@
+- name: "OpenVPN Server: Create {{ ovpn_config_directory }} if it does not exist"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ ovpn_config_directory }}"
+    state: directory
+    mode: "0755"
+
+- name: "OpenVPN Server: Install the SparkLabs configuration generator"
+  become: yes
+  ansible.builtin.apt:
+    deb: https://github.com/thesparklabs/openvpn-configuration-generator/releases/download/1.0.8/openvpn-configuration-generator_20.04_1.0.8.deb
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "OpenVPN Server: Copy visc to ovpn conversion script to {{ ovpn_config_directory }}/python3-convert-visc-to-ovpn.py"
+  become: yes
+  ansible.builtin.copy:
+    src: python3-convert-visc-to-ovpn.py
+    dest: "{{ ovpn_config_directory }}/python3-convert-visc-to-ovpn.py"
+
+- name: "OpenVPN Server: Install openvpn-server"
+  become: yes
+  ansible.builtin.apt:
+    name: openvpn
+    update_cache: yes
+    cache_valid_time: 3600
+    state: latest
+  register: apt_action
+  retries: 10
+  until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  # https://github.com/ansible/ansible/issues/51663#issuecomment-752286191
+
+- name: "OpenVPN Server: Check if ovpn configuration exists in {{ ovpn_config_directory }}"
+  become: yes
+  stat:
+    path: "{{ ovpn_config_directory }}/config.conf"
+  register: vpn_exists
+
+- name: "OpenVPN Server: Create ovpn profile (Generating keys take up to 240 seconds, since randomness is low on new installs)"
+  become: yes
+  ansible.builtin.expect:
+    command: "openvpn-generate init --path {{ ovpn_config_directory }}"
+    responses:
+      (?i)Server address: "{{ ansible_host }}"
+      (?i)Server Port: 1194
+      (?i)Protocol: 1  # UDP
+      (?i)Redirect all traffic through VPN: Y
+      (?i)Please select an option: 6  # Don't use DNS for VPN connections
+      (?i)Would you like to use anonymous defaults for certificate details: Y
+    echo: yes
+    timeout: 240
+  when: vpn_exists.stat.exists == False
+
+- name: "OpenVPN Server: Delete default ovpn configuration"
+  become: true
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/openvpn/config.conf
+    - /etc/openvpn/server
+    - /etc/openvpn/pki
+  when: vpn_exists.stat.exists == False
+
+# Note that we do not make a symlink here, as this will cause the openvpn service to fail
+- name: "OpenVPN Server: Copy configuration file {{ ovpn_config_directory }}/server/server.conf to /etc/openvpn"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ ovpn_config_directory }}/server/{{ item }}"
+    dest: "/etc/openvpn/{{ item }}"
+    owner: root
+    group: root
+    mode: "0600"
+    remote_src: yes  # The config is already on the target, just not in the right spot
+  with_items:
+    - ca.crt
+    - dh.pem
+    - server.conf
+    - server.crt
+    - server.key
+
+# TODO: Convert this into a handler that gets called when needed
+- name: "OpenVPN Server: Start the systemd service now and on (re)boot"
+  become: yes
+  ansible.builtin.systemd:
+    name: openvpn@server
+    enabled: yes
+    state: started
+
+# Set ip forwarding on in /proc and in the sysctl file and reload if necessary
+- name: "Enable IP forwarding for relay functionality"
+  become: yes
+  ansible.builtin.sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes

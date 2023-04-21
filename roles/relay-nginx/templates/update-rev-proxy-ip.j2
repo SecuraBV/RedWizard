@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# The goal of this script is to dynamically determine the connected openvpn
+# connection with a given name and set the reverse proxy redirection towards
+# that connection's IP address
+
+TARGET={{ relay_to_client_profile }}
+PORT={{ backend_port }}
+CURRENTIP=$(cat /etc/nginx/sites-available/{{ nginx_relay_config_name }}.conf  | grep "server.*$TARGET" | head -n1| awk -F ' ' '{print $2}' | cut -d":" -f1)
+
+NEWIP=$(cat /etc/openvpn/openvpn-status.log | grep $TARGET | tail -n1 | cut -d"," -f1)
+
+if [ -z "$NEWIP" ]
+then
+      NEWIP=127.0.0.1
+fi
+
+if [ "$CURRENTIP" = "$NEWIP" ]; then
+    :
+else
+    sed -ri "s/server (\b[0-9]{1,3}\.){3}[0-9]{1,3}\b:$PORT; # $TARGET/server ""$NEWIP:$PORT; # $TARGET/" /etc/nginx/sites-available/{{ nginx_relay_config_name }}.conf
+    systemctl restart nginx.service
+fi

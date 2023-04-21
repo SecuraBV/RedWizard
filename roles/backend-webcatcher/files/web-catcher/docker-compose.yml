@@ -1,0 +1,16 @@
+version: '3'
+services:
+  webcatcher:
+    privileged: true
+    hostname: web-catcher
+    build:
+      context: .
+      args:
+        - VPN=${VPN_CONFIG}
+    container_name: web-catcher-${RELAY_HOST}
+    environment:
+      - VPN=${VPN_CONFIG}
+      - RELAY_HOST=${RELAY_HOST}
+      - CODENAME=${CODENAME}
+    volumes:
+      - './logs:/var/log'

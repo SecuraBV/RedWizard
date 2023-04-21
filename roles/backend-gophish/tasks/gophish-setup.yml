@@ -1,0 +1,58 @@
+
+- name: "GoPhish: Creating {{ gophish_docker_path }}{{ relay_host }}/ directory"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ gophish_docker_path }}{{ relay_host }}/"
+    state: directory
+    mode: 0755
+
+- name: "GoPhish: Copy the GoPhish docker container"
+  become: yes
+  ansible.builtin.copy:
+    src: files/gophish/
+    dest: "{{ gophish_docker_path }}{{ relay_host }}/"
+
+- name: "GoPhish selecting OVPN config based on pattern {{ gophish_ovpn_pattern }}"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ openvpn_client_profile_path }}{{ relay_host }}/{{ gophish_ovpn_pattern }}"
+    dest: "{{ gophish_docker_path }}{{ relay_host }}/gophish.ovpn"
+    remote_src: yes
+
+- name: Add Codename
+  ansible.builtin.lineinfile:
+    dest: "{{ gophish_docker_path }}{{ relay_host }}/.env"
+    regexp: "^CODENAME=.*$"
+    line: "CODENAME={{ codename }}"
+    backrefs: yes
+  become: yes
+
+- name: "Creating Sender addresses"
+  ansible.builtin.set_fact:
+    from_addresses: "{{ send_from|map('regex_replace', '$', domain_name)|list|join(',') }}"
+  changed_when: false # Done always, so no change notification
+
+- name: "Setting Remote addresses"
+  ansible.builtin.lineinfile:
+    dest: "{{ gophish_docker_path }}{{ relay_host }}/.env"
+    regexp: "^RELAY_HOST=.*$"
+    line: "RELAY_HOST={{ relay_host_ip }}"
+    backrefs: yes
+  become: yes
+
+- name: "GoPhish setting environment variables"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: "{{ gophish_docker_path }}{{ relay_host }}/.env"
+    regexp: "^{{ item.key }}=.*$"
+    line: "{{ item.key }}={{ item.value }}"
+    backrefs: yes
+  with_dict: "{{ gophish_config }}"
+
+- name: "GoPhish Building image (This can take 5+ minutes, do not despair)"
+  become: yes
+  ansible.builtin.shell: "cd {{ gophish_docker_path }}{{ relay_host }}/; docker-compose build"
+
+- name: "GoPhish Starting GoPhish"
+  become: yes
+  ansible.builtin.shell: "cd {{ gophish_docker_path }}{{ relay_host }}/; docker-compose up --detach"

@@ -1,0 +1,64 @@
+#- name: Ensure localisation files for '{{ config_system_locale }}' are available
+#  locale_gen:
+#    name: "{{ config_system_locale }}"
+#    state: present
+#
+#- name: Ensure language files for '{{ config_system_language }}' are available
+#  locale_gen:
+#    name: "{{ config_system_language }}"
+#    state: present
+#
+#- name: Get current locale and language configuration
+#  command: localectl status
+#  register: locale_status
+#  changed_when: false
+#
+#- name: Parse 'LANG' from current locale and language configuration
+#  set_fact:
+#    locale_lang: "{{ locale_status.stdout | regex_search('LANG=([^\n]+)', '\\1') | first }}"
+#
+#- name: Parse 'LANGUAGE' from current locale and language configuration
+#  set_fact:
+#    locale_language: "{{ locale_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
+#
+#- name: Configure locale to '{{ config_system_locale }}' and language to '{{ config_system_language }}'
+#  become: yes
+#  command: localectl set-locale LANG={{ config_system_locale }} LANGUAGE={{ config_system_language }}
+#  changed_when: locale_lang != config_system_locale or locale_language != config_system_language
+
+- name: "APT: Uninstall exim if present on the system"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - exim4
+      - exim4-base
+      - exim4-config
+      - exim4-daemon-light
+    state: absent
+    update_cache: true
+
+- name: "APT: Install Git and mailserver packages"
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - python3
+      - git
+      - dovecot-imapd
+      - dovecot-lmtpd
+      - postfix
+      - postgrey
+      - postfix-policyd-spf-python
+      - opendkim
+      - opendkim-tools
+      - opendmarc
+      - mailutils
+      - certbot
+    state: present
+    update_cache: true
+
+- name: "Hostname: Add {{ domain_name }} to /etc/hosts"
+  become: yes
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    line: "127.0.0.1 localhost {{ domain_name }}"
+    state: present

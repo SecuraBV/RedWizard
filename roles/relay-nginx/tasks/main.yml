@@ -1,0 +1,18 @@
+---
+- name: "***** RELAY - NGINX: OS Prep *****"
+  include_tasks: os-prep.yml
+
+- name: "***** RELAY - NGINX: Request Lets encrypt cert for  {{ domain_name }} *****"
+  include_tasks: get-letsencrypt.yml
+
+- name: "***** PHISHING RELAY: Generate Client profiles *****"
+  include_tasks: ovpn-create-client.yml
+
+- name: "***** RELAY - NGINX: Configure NGINX*****"
+  include_tasks: nginx-config.yml
+
+- name: "***** RELAY - NGINX: Open port 443*****"
+  include_tasks: firewall-config.yml
+
+- name: "***** RELAY - NGINX: Write help text *****"
+  include_tasks: write-help.yml

@@ -1,0 +1,7 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+web_catcher_docker_path: "{{ toolkit_directory }}/web-catcher/docker/"
+web_catcher_ovpn_pattern: "web-catcher@{{ relay_host_ip }}.ovpn"
+
+help_marker: "backend_webcatcher_{{ relay_host_ip }}"
+

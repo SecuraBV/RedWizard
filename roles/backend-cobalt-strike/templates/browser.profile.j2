@@ -1,0 +1,71 @@
+# TODO: CHANGE-SECRETS-Before-use
+
+set sleeptime "5000";
+set jitter    "0";
+set useragent "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Blank Lizard";
+
+http-get {  
+
+    set uri "/{{ http_get_uri }}/";
+
+    client {
+
+        header "Accept" "*/*";
+
+        metadata {
+            base64;
+            header "Cookie";
+        }
+    }
+
+    server {
+        header "Content-Encoding" "gzip";
+
+        output {
+            print;
+        }
+    }
+}
+
+http-post {
+    set uri "/{{ http_post_uri }}/";
+    client {
+
+        header "Accept" "*/*";
+
+        id {
+            parameter "sn";
+        }
+
+
+        output {
+            base64;
+            print;
+        }
+    }
+
+    server {
+
+        header "Server" "Server";
+
+        output {
+            print;
+        }
+    }
+}
+
+# dress up the staging process too
+http-stager {
+
+    set uri_x86 "/{{ http_stager_86_uri }}/vase.gif";
+    set uri_x64 "/{{ http_stager_64_uri }}/rose.gif";
+
+    server {
+        header "Content-Type" "image/gif";
+
+        output {
+            print;
+        }
+    }
+}
+

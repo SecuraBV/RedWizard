@@ -1,0 +1,22 @@
+---
+openvpn_client_profile_path: "{{ toolkit_directory }}/client_profiles/"
+dropbox_docker_path: "{{ toolkit_directory }}/dropbox/docker/"
+dropbox_ovpn_pattern: "dropbox@{{ relay_host_ip }}.ovpn"
+
+dropbox_vpn_dir: "vpn_config"
+
+dropbox_config:
+    VPNPORT: "{{ VPN_PORT }}"
+
+help_marker: "dropbox_{{ relay_host_ip }}"
+
+client_profiles:
+  - "Dropbox-1"
+  - "Dropbox-2"
+  - "Dropbox-3"
+  - "Dropbox-4"
+  - "Dropbox-5"
+  - "Dropbox-6"
+  - "Dropbox-7"
+  - "Dropbox-8"
+  - "Dropbox-9"

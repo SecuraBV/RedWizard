@@ -1,0 +1,34 @@
+---
+- name: "APT: update packages"
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+#- name: "APT: Install basic packages for OSINT server use"
+#  become: yes
+#  apt:
+#    name:
+#       - docker.io
+#       - docker-compose
+#       - python
+#       - pwgen
+#       - vim
+#       - openvpn
+#       - iptables
+#       - iptables-persistent
+#       - apparmor-utils
+#       - tcpdump
+#       - netcat
+#       - dnsutils
+#       - ipset
+#       - zip
+#       - screen
+#       - apparmor-utils
+#       - net-tools
+#       - curl
+#       - nano
+#       - bridge-utils
+#    state: present
+#    update_cache: yes
+
