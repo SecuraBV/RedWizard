@@ -1,0 +1,156 @@
+# RELAY CONFIGURATIONS
+
+- name: "***** CONFIGURING ALL RELAYS *****"
+  hosts: relays
+  gather_facts: yes
+  roles:
+    - relay-common
+  tags:
+    - relay
+    - relay-common
+
+- name: "***** CONFIGURING USERS FOR RELAYS *****"
+  hosts: relays
+  gather_facts: yes
+  roles:
+    - users
+  tags:
+    - relay
+    - users
+    - users-relay
+
+- name: "***** CONFIGURING DROPBOX RELAYS *****"
+  hosts: relays_dropbox
+  gather_facts: yes
+  roles:
+    - relay-dropbox
+  tags:
+    - relay
+    - relay-dropbox
+    - dropbox
+
+- name: "***** CONFIGURING PHISHING RELAYS *****"
+  hosts: relays_phishing
+  gather_facts: yes
+  roles:
+    - relay-phishing
+  tags:
+    - relay
+    - relay-phishing
+    - phishing
+
+# The relays_nginx needs to have serial: 1 set so multiple nginx roles do not interfere
+- name: "***** CONFIGURING NGINX RELAYS *****"
+  hosts: relays_nginx
+  serial: 1
+  gather_facts: yes
+  roles:
+    - relay-nginx
+  tags:
+    - relay
+    - relay-nginx
+    - nginx
+    - stage-one
+    - cobalt-strike
+
+# Configure the CobaltStrike DNS relays
+- name: "***** CONFIGURING Cobaltstrike RELAYS *****"
+  hosts: relays_cobalt_strike
+  gather_facts: yes
+  roles:
+    - relay-cobalt-strike
+  tags:
+    - relay
+    - relay-cobalt-strike
+    - cobalt-strike
+
+- name: "***** CONFIGURING OSINT RELAYS *****"
+  hosts: relays_osint
+  gather_facts: yes
+  roles:
+    - relay-osint
+  tags:
+    - relay
+    - relay-osint
+    - osint
+
+# BACKEND CONFIGURATIONS
+
+- name: "***** CONFIGURING BACKENDS *****"
+  hosts: backends
+  gather_facts: yes
+  roles:
+    - backend-common
+  tags:
+    - backend
+    - backend-common
+
+- name: "***** CONFIGURING USERS FOR BACKENDS *****"
+  hosts: backends
+  gather_facts: yes
+  roles:
+    - users
+  tags:
+    - users
+    - backend
+    - users-backends
+
+- name: "***** CONFIGURING BACKEND GOPHISH *****"
+  hosts: backends_gophish
+  gather_facts: yes
+  roles:
+    - backend-gophish
+  tags:
+    - backend
+    - backend-gophish
+    - phishing
+
+- name: "***** CONFIGURING BACKEND MANUAL PHISH *****"
+  hosts: backends_manual_phish
+  gather_facts: yes
+  roles:
+    - backend-manual-phish
+  tags:
+    - backend
+    - backend-manual-phish
+    - phishing
+
+- name: "***** CONFIGURING BACKEND COBALT STRIKE *****"
+  hosts: backends_cobalt_strike
+  gather_facts: yes
+  roles:
+    - backend-cobalt-strike
+  tags:
+    - backend
+    - backend-cobalt-strike
+    - cobalt-strike
+
+- name: "***** CONFIGURING BACKEND DROPBOX *****"
+  hosts: backends_dropbox
+  gather_facts: yes
+  roles:
+    - backend-dropbox
+  tags:
+    - backend
+    - backend-dropbox
+    - dropbox
+
+- name: "***** CONFIGURING BACKEND OSINT *****"
+  hosts: backends_osint
+  gather_facts: yes
+  roles:
+    - backend-osint
+  tags:
+    - backend
+    - backend-osint
+    - osint
+
+- name: "***** CONFIGURING BACKEND WEB CATCHER *****"
+  hosts: backends_web_catcher
+  gather_facts: yes
+  roles:
+    - backend-webcatcher
+  tags:
+    - backend
+    - backend-webcatcher
+    - webcatcher
