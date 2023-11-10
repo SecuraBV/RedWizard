@@ -28,7 +28,7 @@ ___
 
 We kept the requirements for Red Wizard as simple as possible:
 
-* Ubuntu 22.04 on the deployment system (Your laptop or a VM is fine)
+* Ubuntu 22.04 on the deployment system (Your laptop or a VM is fine) with a 16G root partition. 
 * Clean Ubuntu 20.04 on all target machines (Will support 22.04 in the near future)
 * 1 deployment user (Configured for key-based SSH access on all machines)
 * Deployment user has identical sudo password on all machines
